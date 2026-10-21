@@ -1,4 +1,4 @@
--- 珍格：分类、收藏、导入记录。代码里也有 CREATE TABLE IF NOT EXISTS 兜底（src/api/_store.js 的 SCHEMA，两边要一致，测试核对）。
+-- 奇趣：分类、收藏、导入记录。代码里也有 CREATE TABLE IF NOT EXISTS 兜底（src/api/_store.js 的 SCHEMA，两边要一致，测试核对）。
 CREATE TABLE IF NOT EXISTS cats (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name_zh TEXT NOT NULL DEFAULT '',

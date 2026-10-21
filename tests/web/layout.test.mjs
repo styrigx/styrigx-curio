@@ -20,13 +20,16 @@ test('顶栏：九宫格 · 搜索框（首页）/ 回首页链接（其他页�
   assert.doesNotMatch(base, /sgx-tb-quick|sgx-qp|data-dm-seg|<a class="sgx-tb-me"/);
 });
 
-test('抽屉：主站共享外壳的 nav.json，模板不写死项；珍格（或主站换过来前的书签项）是当前项', () => {
+test('抽屉：主站共享外壳的 nav.json，模板不写死项；奇趣是当前项；结构同主站', () => {
   const drawer = base.slice(base.indexOf('<dialog id="sgx-drawer"'), base.indexOf('</dialog>'));
   assert.match(drawer, /range \$shellNav\.items/);
-  assert.match(drawer, /range \$shellNav\.footer/);
-  assert.match(drawer, /<hr class="sgx-drawer-div">/);
+  assert.match(drawer, /with \$shellNav\.footer/);
+  /* 和主站同一结构（2026-10-22）：头部字标 + 头像（链主站账号页），导航项下一条分隔线，底栏搜索框 */
+  assert.match(drawer, /class="sgx-drawer-head"><span class="sgx-drawer-brand">\{\{ \$shellNav\.wordmark \| safeHTML \}\}/);
+  assert.match(drawer, /<a class="sgx-drawer-me" href="\{\{ \$me \}\}"/);
+  assert.match(drawer, /<hr class="sgx-drawer-sep" aria-hidden="true">/);
+  assert.match(drawer, /<div class="sgx-drawer-foot"><a class="sgx-drawer-search"/);
   assert.match(drawer, /eq \.id "curio"/);
-  assert.match(drawer, /eq \.id "bookmarks"/);
 });
 
 test('首页部件：分类条、格子、收藏按钮、更多菜单（分类 / 导入 / 导出）、编辑弹层、确认', () => {

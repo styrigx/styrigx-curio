@@ -4,7 +4,7 @@
 
 # Styrigx Curio
 
-Curio (珍格): good things found on the web, kept one by one.
+Curio (奇趣): good things found on the web, kept one by one.
 
 [curio.styrigx.com](https://curio.styrigx.com) · [styrigx.com](https://styrigx.com) · [Daymark](https://daymark.styrigx.com) · [Blog](https://blog.styrigx.com) · [GitHub @styrigx](https://github.com/styrigx)
 

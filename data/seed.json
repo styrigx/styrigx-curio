@@ -1,5 +1,5 @@
 {
-  "_note": "珍格初始收藏：迁自 styrigx-space 主站书签（web/data/links.yaml，2026-10-21），补回 blog.styrigx.com。只在 migrations/0002_seed.sql 里用一次（由 scripts/gen-seed-sql.mjs 生成），之后以 D1 为准。",
+  "_note": "奇趣初始收藏：迁自 styrigx-space 主站书签（web/data/links.yaml，2026-10-21），补回 blog.styrigx.com。只在 migrations/0002_seed.sql 里用一次（由 scripts/gen-seed-sql.mjs 生成），之后以 D1 为准。",
   "cats": [
     {
       "name": {

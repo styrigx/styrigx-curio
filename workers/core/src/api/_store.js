@@ -1,5 +1,5 @@
 // workers/core/src/api/_store.js
-// 珍格的数据层：表结构、校验、读写。下划线开头：不是接口（路由表见 src/routes.js）。
+// 奇趣的数据层：表结构、校验、读写。下划线开头：不是接口（路由表见 src/routes.js）。
 //
 // 表（D1 styrigx-curio，迁移 migrations/0001_init.sql，代码里的 CREATE TABLE IF NOT EXISTS 只兜底全新的库）：
 //   cats    分类：id、中英文名、是否私密、排序

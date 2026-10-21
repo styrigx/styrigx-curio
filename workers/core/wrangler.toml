@@ -1,4 +1,4 @@
-# styrigx-curio-core：珍格的核心 Worker（收藏的存、读、导入导出、图标缓存）（CI 部署；承接 curio.styrigx.com/api/*）
+# styrigx-curio-core：奇趣的核心 Worker（收藏的存、读、导入导出、图标缓存）（CI 部署；承接 curio.styrigx.com/api/*）
 #
 # 全部后端代码都在本目录：src/（入口、路由表、接口）+ migrations/（D1）。
 # Pages（styrigx-curio，配置见 web/wrangler.toml）只放静态文件；页面的会话检查在主站鉴权网关。

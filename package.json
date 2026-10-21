@@ -4,7 +4,7 @@
     "postcss": "^8.5.29",
     "tailwindcss": "^3.4.19"
   },
-  "description": "珍格 curio.styrigx.com",
+  "description": "奇趣 curio.styrigx.com",
   "name": "styrigx-curio",
   "scripts": {
     "build:css": "tailwindcss -c web/tailwind.config.js -i web/assets/css/input.css -o web/assets/css/main.css --minify",
