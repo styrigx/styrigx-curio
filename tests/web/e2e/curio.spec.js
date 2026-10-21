@@ -164,6 +164,7 @@ test('英文页：搜索提示、分类名用英文（英文空时退回中文�
   await page.goto('/en/');
   await expect(page.locator('#cu-q')).toHaveAttribute('placeholder', 'Search Curio');
   await expect(page.locator('.cu-chip')).toHaveText(['All', 'Dev & Cloud', 'Network Tests', '私房']);
-  await expect(page.locator('.cu-tile[data-id="11"] .cu-desc')).toHaveText('Code hosting');
+  await expect(page.locator('.cu-tile[data-id="11"]')).toHaveAttribute('title', /^Code hosting · /);
+  await expect(page.locator('.cu-tile .cu-desc')).toHaveCount(0);
   await expect(page.locator('#menu-export')).toHaveAttribute('href', '/api/export?lang=en');
 });
