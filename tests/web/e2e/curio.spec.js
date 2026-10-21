@@ -1,5 +1,5 @@
-// 珍格首页（手机）：接口用 page.route 假数据，不碰线上。
-// - 顶栏：九宫格 · 搜索框 · 头像；抽屉同主站，书签项（主站换成珍格前）是当前项
+// 奇趣首页（手机）：接口用 page.route 假数据，不碰线上。
+// - 顶栏：九宫格 · 搜索框 · 头像；抽屉同主站（字标 + 头像、分隔线、底栏搜索框），奇趣是当前项
 // - 访客：没有「收藏」和「⋯」；格子点开新标签页；图标取不到显示首字母
 // - 分类条筛选 + hash；搜索即时筛选，没结果有提示
 // - 主人：私密带锁；收藏 → 填网址自动补全 → 保存发 link.add；长按格子编辑、删除要确认；管理分类；导入发原文
@@ -50,7 +50,7 @@ async function mock(page, owner) {
 test('访客：顶栏搜索框、抽屉同主站；没有收藏按钮和菜单；只看公开；图标取不到显示首字母', async ({ page }) => {
   await mock(page, false);
   await page.goto('/');
-  await expect(page.locator('#cu-q')).toHaveAttribute('placeholder', '搜索珍格');
+  await expect(page.locator('#cu-q')).toHaveAttribute('placeholder', '搜索奇趣');
   await expect(page.locator('.cu-sec-h > span:first-child')).toHaveText(['开发与云', '网络检测']);
   await expect(page.locator('.cu-tile')).toHaveCount(2);
   await expect(page.locator('#cu-fab')).toBeHidden();
@@ -63,8 +63,12 @@ test('访客：顶栏搜索框、抽屉同主站；没有收藏按钮和菜单�
   await expect(page.locator('.cu-tile[data-id="21"] img')).toHaveCount(0);
   await expect(page.locator('.cu-tile[data-id="21"] .cu-ic-letter')).toHaveText('I');
   await page.locator('.sgx-tb-nav').click();
-  await expect(page.locator('#sgx-drawer [data-nav="bookmarks"]')).toHaveAttribute('aria-current', 'page');
-  await expect(page.locator('#sgx-drawer [data-nav="settings"]')).toHaveAttribute('href', 'https://styrigx.com/settings/');
+  await expect(page.locator('#sgx-drawer .sgx-drawer-item')).toHaveText(['首页', '奇趣', '日刻', '博客']);
+  await expect(page.locator('#sgx-drawer [data-nav="curio"]')).toHaveAttribute('aria-current', 'page');
+  /* 同主站：头部头像去主站账号页，导航项下一条分隔线，底栏搜索框去主站搜索 */
+  await expect(page.locator('#sgx-drawer .sgx-drawer-me')).toHaveAttribute('href', 'https://styrigx.com/settings/account/');
+  await expect(page.locator('#sgx-drawer hr.sgx-drawer-sep')).toHaveCount(1);
+  await expect(page.locator('#sgx-drawer .sgx-drawer-search')).toHaveAttribute('href', 'https://styrigx.com/search/');
 });
 
 test('分类条筛选并写 hash；搜索即时筛选，清除复原，没结果有提示', async ({ page }) => {

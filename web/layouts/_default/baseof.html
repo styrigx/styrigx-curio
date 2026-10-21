@@ -9,7 +9,7 @@
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#f5f8fa">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#10151a">
-<title>{{ if .IsHome }}{{ if $isEn }}Curio{{ else }}珍格{{ end }}{{ else }}{{ .Title }} | {{ if $isEn }}Curio{{ else }}珍格{{ end }}{{ end }}</title>
+<title>{{ if .IsHome }}{{ if $isEn }}Curio{{ else }}奇趣{{ end }}{{ else }}{{ .Title }} | {{ if $isEn }}Curio{{ else }}奇趣{{ end }}{{ end }}</title>
 <meta name="description" content="{{ if $isEn }}Sloan Gray's Curio: good things found on the web, kept one by one{{ else }}{{ .Site.Params.description }}{{ end }}">
 <meta name="robots" content="noindex">
 {{/* 标签页图标、主屏图标都用主站头像 */}}
@@ -22,7 +22,7 @@
 :root{--nav-h:68px}/* 顶栏卡片底边位置：16 + 52 */
 </style>
 {{/* 外观 + 语言预读（渲染前）——继承主站 sgx-ui cookie 的深浅色、调色板、强调色、字体大小、减弱动效和语言；
-     没有 cookie 时跟系统（珍格没有自己的开关） */}}
+     没有 cookie 时跟系统（奇趣没有自己的开关） */}}
 <script>{{ (resources.Get "js/sgx/ui-inherit-run.js" | js.Build (dict "format" "iife" "minify" true "target" "es2018")).Content | safeJS }}</script>
 <script>
 /* 布局模式：<980 手机 / ≥980 DeX（沿用主站断点） */
@@ -55,11 +55,11 @@ __applyLayout();
       {{ if .IsHome }}
       <label class="cu-search" role="search">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
-        <input id="cu-q" type="search" enterkeyhint="search" autocomplete="off" spellcheck="false" aria-label="{{ if $isEn }}Search Curio{{ else }}搜索珍格{{ end }}" placeholder="{{ if $isEn }}Search Curio{{ else }}搜索珍格{{ end }}">
+        <input id="cu-q" type="search" enterkeyhint="search" autocomplete="off" spellcheck="false" aria-label="{{ if $isEn }}Search Curio{{ else }}搜索奇趣{{ end }}" placeholder="{{ if $isEn }}Search Curio{{ else }}搜索奇趣{{ end }}">
         <button id="cu-q-clear" type="button" class="cu-search-x hidden" aria-label="{{ if $isEn }}Clear{{ else }}清除{{ end }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       </label>
       {{ else }}
-      <a class="cu-search cu-search--link" href="{{ $home }}">{{ if $isEn }}Back to Curio{{ else }}回到珍格{{ end }}</a>
+      <a class="cu-search cu-search--link" href="{{ $home }}">{{ if $isEn }}Back to Curio{{ else }}回到奇趣{{ end }}</a>
       {{ end }}
     </div>
     <span class="sgx-tb-me" aria-hidden="true"><img src="https://styrigx.com/avatar/192.webp" alt="" width="52" height="52" class="sgx-tb-avatar"></span>
@@ -68,22 +68,33 @@ __applyLayout();
 
 {{/* 导航抽屉（主站共享外壳同一份，topbar.js 开关）：项和图标来自 assets/sgx-shell/nav.json，样式（宽度、毛玻璃、tonal 当前项、字体）
    来自 input.css 的 @sgx-shell 段，都由 scripts/sync-shell.mjs 从主站同步，勿手改。分隔线下是设置。
-   珍格是当前项（主站 nav.json 里 id 为 curio；主站换过来之前沿用旧的「书签」项 bookmarks），点它只关抽屉；其余跳主站 / 日刻 / 博客（同一标签页）。 */}}
+   奇趣是当前项（主站 nav.json 里 id 为 curio；主站换过来之前沿用旧的「书签」项 bookmarks），点它只关抽屉；其余跳主站 / 日刻 / 博客（同一标签页）。 */}}
 {{ $shellNav := resources.Get "sgx-shell/nav.json" | transform.Unmarshal }}
 <dialog id="sgx-drawer" class="sgx-drawer" aria-label="{{ cond $isEn $shellNav.label.en $shellNav.label.zh }}">
   <nav class="sgx-drawer-sheet">
-    <p class="sgx-drawer-head">{{ $shellNav.brand }}</p>
+    {{/* 抽屉头 = 字标（nav.json wordmark）+ 右边的头像圆（共享外壳 .sgx-drawer-me，52px，连外环）：点了去主站账号页（英文页去 /en/settings/account/） */}}
+    {{ $me := $shellNav.me.href }}{{ if $isEn }}{{ $me = replace $me "https://styrigx.com/" "https://styrigx.com/en/" }}{{ end }}
+    <div class="sgx-drawer-head"><span class="sgx-drawer-brand">{{ $shellNav.wordmark | safeHTML }}</span><a class="sgx-drawer-me" href="{{ $me }}" aria-label="{{ cond $isEn $shellNav.me.en $shellNav.me.zh }}"><img src="{{ $shellNav.me.avatar }}" alt="" width="52" height="52"></a></div>
+    <div class="sgx-drawer-body">
     <ul class="sgx-drawer-list">
       {{ range $shellNav.items }}
-      <li><a class="sgx-drawer-item" href="{{ partial "shell-nav-href.html" (dict "it" . "en" $isEn) }}" data-nav="{{ .id }}"{{ if or (eq .id "curio") (eq .id "bookmarks") }} aria-current="page"{{ end }}><span class="sgx-drawer-ic">{{ index $shellNav.icons .icon | safeHTML }}</span><span class="sgx-drawer-label">{{ cond $isEn .en .zh }}</span></a></li>
+      <li><a class="sgx-drawer-item" href="{{ partial "shell-nav-href.html" (dict "it" . "en" $isEn) }}" data-nav="{{ .id }}"{{ if eq .id "curio" }} aria-current="page"{{ end }}><span class="sgx-drawer-ic">{{ index $shellNav.icons .icon | safeHTML }}</span><span class="sgx-drawer-label">{{ cond $isEn .en .zh }}</span></a></li>
       {{ end }}
     </ul>
+    {{/* 导航项下的分隔线（同主站 .sgx-drawer-sep，CSS 在本站段里） */}}
+    <hr class="sgx-drawer-sep" aria-hidden="true">
+    {{ with $shellNav.footer }}
     <hr class="sgx-drawer-div">
     <ul class="sgx-drawer-list">
-      {{ range $shellNav.footer }}
+      {{ range . }}
       <li><a class="sgx-drawer-item" href="{{ partial "shell-nav-href.html" (dict "it" . "en" $isEn) }}" data-nav="{{ .id }}"><span class="sgx-drawer-ic">{{ index $shellNav.icons .icon | safeHTML }}</span><span class="sgx-drawer-label">{{ cond $isEn .en .zh }}</span></a></li>
       {{ end }}
     </ul>
+    {{ end }}
+    </div>
+    {{/* 底栏搜索框（同主站）：子站还没接原地搜索层，点了去主站搜索（/search/ → 主站首页打开搜索层） */}}
+    {{ $sp := $shellNav.search.path }}{{ if $isEn }}{{ $sp = printf "/en%s" $sp }}{{ end }}
+    <div class="sgx-drawer-foot"><a class="sgx-drawer-search" href="{{ $shellNav.search.origin }}{{ $sp }}" aria-label="{{ cond $isEn $shellNav.search.en $shellNav.search.zh }}"><span class="sgx-drawer-search-ic">{{ index $shellNav.icons $shellNav.search.icon | safeHTML }}</span><span class="sgx-drawer-search-label" aria-hidden="true">{{ cond $isEn $shellNav.search.en $shellNav.search.zh }}</span></a></div>
   </nav>
 </dialog>
 {{ block "main" . }}{{ end }}

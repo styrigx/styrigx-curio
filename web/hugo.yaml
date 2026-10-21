@@ -1,4 +1,4 @@
-title: '珍格'
+title: '奇趣'
 baseURL: 'https://curio.styrigx.com/'
 defaultContentLanguage: zh
 defaultContentLanguageInSubdir: false
@@ -21,7 +21,7 @@ markup:
       unsafe: true
 
 params:
-  description: 'Sloan Gray 的珍格：在网上偶然遇到、想留下的好东西'
+  description: 'Sloan Gray 的奇趣：在网上偶然遇到、想留下的好东西'
   version: '0.1.0'
 
 disableKinds: ['taxonomy', 'term', 'rss', 'section']

@@ -1,6 +1,6 @@
 {{ define "main" }}
 {{ $isEn := or (eq .Lang "en") (hasPrefix .RelPermalink "/en/") }}
-{{/* 珍格首页：分类筛选条 + 按分类分组的收藏格子（curio.js 画）。顶栏长条里的搜索框即时筛选。
+{{/* 奇趣首页：分类筛选条 + 按分类分组的收藏格子（curio.js 画）。顶栏长条里的搜索框即时筛选。
    主人（owner）：右下角「收藏」，长按格子编辑；分类条右边「⋯」菜单里有 管理分类 / 导入浏览器书签 / 导出书签。
    访客只读、只看公开的。点格子在新标签页打开网址。数据全走 curio.styrigx.com/api/*（接口 Worker，见 workers/core）。 */}}
 <main id="cu-main" class="w-full mx-auto" style="max-width:1100px;padding-left:16px;padding-right:16px">

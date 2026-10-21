@@ -4,7 +4,7 @@
 
 # Styrigx Curio
 
-珍格（Curio）：在网上偶然遇到、想留下的好东西，一格一件收起来。
+奇趣（Curio）：在网上偶然遇到、想留下的好东西，一格一件收起来。
 
 [在线访问 curio.styrigx.com](https://curio.styrigx.com) · [主站 styrigx.com](https://styrigx.com) · [日刻 daymark.styrigx.com](https://daymark.styrigx.com) · [博客 blog.styrigx.com](https://blog.styrigx.com) · [GitHub @styrigx](https://github.com/styrigx)
 

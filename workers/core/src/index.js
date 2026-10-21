@@ -1,5 +1,5 @@
 /**
- * @fileoverview styrigx-curio-core：珍格接口 Worker（路由 curio.styrigx.com/api/*，见 wrangler.toml）。
+ * @fileoverview styrigx-curio-core：奇趣接口 Worker（路由 curio.styrigx.com/api/*，见 wrangler.toml）。
  *
  * 数据接口都在这里，D1（DB）和 R2（FILES：图标缓存、导入原文备份）只绑在本 Worker 上；Pages 只放静态文件。
  * 本 Worker 不持任何钥匙：会话交给主站鉴权网关验（服务绑定 AUTH，见 src/api/_auth.js）。
@@ -39,7 +39,7 @@ function json(status, body) {
   });
 }
 
-/** 公开接口（不验会话）：珍格没有 */
+/** 公开接口（不验会话）：奇趣没有 */
 export function isPublic() {
   return false;
 }

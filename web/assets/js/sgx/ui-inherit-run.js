@@ -1,7 +1,7 @@
 /**
  * @fileoverview baseof 内联执行（IIFE），渲染前应用继承自主站的外观和语言（sgx-ui cookie），不闪屏。
  * - 语言：cookie 的 lang 和本页不同 → location.replace 到另一种语言的同一页（保留 #页签），爬虫不跳
- * - 珍格没有自己的深浅色开关了：清掉旧的 sgx-theme-mode / sgx-theme-at，免得盖过主站设置
+ * - 奇趣没有自己的深浅色开关了：清掉旧的 sgx-theme-mode / sgx-theme-at，免得盖过主站设置
  * - 自定义主题色：有缓存首帧直接插；没缓存先按预设渲染，再加载 <html data-sgx-accent-js> 指的引擎脚本（shell-accent.js）算好换上
  * - 跟系统：系统深浅色变化时 window.__sgxApplyUi() 重算
  */

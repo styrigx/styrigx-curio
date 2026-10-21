@@ -1,9 +1,9 @@
 /**
- * @fileoverview 珍格继承主站外观和语言：读主站写的 sgx-ui cookie（Domain=styrigx.com，契约同博客 docs/sgx-ui-cookie.md），
+ * @fileoverview 奇趣继承主站外观和语言：读主站写的 sgx-ui cookie（Domain=styrigx.com，契约同博客 docs/sgx-ui-cookie.md），
  * 首帧前应用深浅色（mode，别名 theme）、调色板（pal）、自定义主题色种子（accent）、字体大小（fs）、减弱动效（rm），
  * 语言（lang）和当前页不同就换到另一种语言的同一页。这里只读不写 cookie。
  *
- * 2026-10-21 起珍格和博客一样是沉浸式 app，没有自己的深浅色 / 语言开关（快捷面板已删），设置全在主站。
+ * 2026-10-21 起奇趣和博客一样是沉浸式 app，没有自己的深浅色 / 语言开关（快捷面板已删），设置全在主站。
  * 颜色是主站共享外壳的色彩角色（input.css 的 @sgx-shell 段）：pal → data-palette；accent 是主站当前种子 #rrggbb，
  * 等于 pal 的预设种子就只用预设，不等就是自定义色（palette-scheme.js 算整套角色，缓存在本站 localStorage）。
  * resolveAppearance 仍接受本地选择（local）以兼容旧数据，但页面传入的永远是空（ui-inherit-run.js 会清掉旧的
@@ -36,7 +36,7 @@ const HEX = /^#[0-9a-f]{6}$/i;
 /**
  * 算出要应用的外观。
  * @param {any|null} ui 解码后的 cookie
- * @param {{mode: string|null, at: number}} local 本站本地的深浅色选择和修改时间（珍格已没有开关，页面总是传空）
+ * @param {{mode: string|null, at: number}} local 本站本地的深浅色选择和修改时间（奇趣已没有开关，页面总是传空）
  * @param {boolean} prefersDark 系统是否深色
  * @param {Record<string,string>} seeds 预设 id → 种子（共享外壳 palettes.json）
  * @returns {{mode: string, dark: boolean, pal: string, fs: string, rm: boolean, seed?: string}}
@@ -63,7 +63,7 @@ export function resolveAppearance(ui, local, prefersDark, seeds) {
 
 /**
  * 语言跟主站：cookie 的 lang 和本页语言不同时，返回另一种语言的同一页（保留查询串和 #页签）；不用跳返回 ''。
- * 珍格每页都有中英两版：/xxx ↔ /en/xxx。
+ * 奇趣每页都有中英两版：/xxx ↔ /en/xxx。
  * @param {any|null} ui
  * @param {{pathname: string, search?: string, hash?: string}} loc
  * @param {'zh'|'en'} pageLang
