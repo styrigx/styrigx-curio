@@ -1,0 +1,158 @@
+{{ define "main" }}
+{{ $isEn := or (eq .Lang "en") (hasPrefix .RelPermalink "/en/") }}
+{{/* 珍格首页：分类筛选条 + 按分类分组的收藏格子（curio.js 画）。顶栏长条里的搜索框即时筛选。
+   主人（owner）：右下角「收藏」，长按格子编辑；分类条右边「⋯」菜单里有 管理分类 / 导入浏览器书签 / 导出书签。
+   访客只读、只看公开的。点格子在新标签页打开网址。数据全走 curio.styrigx.com/api/*（接口 Worker，见 workers/core）。 */}}
+<main id="cu-main" class="w-full mx-auto" style="max-width:1100px;padding-left:16px;padding-right:16px">
+  <div class="cu-bar">
+    <div id="cu-chips" class="cu-chips" role="tablist" aria-label="{{ if $isEn }}Categories{{ else }}分类{{ end }}"></div>
+    <button id="cu-menu-btn" type="button" class="cu-menu-btn hidden" aria-haspopup="dialog" aria-label="{{ if $isEn }}More{{ else }}更多{{ end }}">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+    </button>
+  </div>
+  <div id="cu-list" class="cu-list"></div>
+  <p id="cu-empty" class="hidden text-center py-16 text-[15px] text-m-on-surface-variant"></p>
+  <p id="cu-loading" class="text-center py-16 text-sm text-m-on-surface-variant">{{ if $isEn }}Loading…{{ else }}加载中…{{ end }}</p>
+</main>
+
+{{/* ===== 收藏（主人，右下角浮动按钮） ===== */}}
+<button id="cu-fab" type="button" class="cu-fab hidden">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>{{ if $isEn }}Keep{{ else }}收藏{{ end }}
+</button>
+
+{{/* ===== 更多（主人）：管理分类 / 导入 / 导出 ===== */}}
+<div id="menu-wrap" class="bk-overlay fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="menu-title">
+  <div class="bk-overlay-backdrop absolute inset-0" data-close="menu"></div>
+  <div class="bk-panel bk-dialog text-m-on-surface shadow-2xl">
+    <div class="sheet-handle"></div>
+    <h2 id="menu-title" class="sr-only">{{ if $isEn }}More{{ else }}更多{{ end }}</h2>
+    <div class="px-3 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))] flex flex-col">
+      <button id="menu-cats" type="button" class="cu-row">{{ if $isEn }}Manage categories{{ else }}管理分类{{ end }}</button>
+      <button id="menu-import" type="button" class="cu-row">{{ if $isEn }}Import browser bookmarks{{ else }}导入浏览器书签{{ end }}</button>
+      <a id="menu-export" class="cu-row" href="/api/export{{ if $isEn }}?lang=en{{ end }}" download>{{ if $isEn }}Export as bookmarks file{{ else }}导出为书签文件{{ end }}</a>
+    </div>
+  </div>
+</div>
+
+{{/* ===== 收藏 / 编辑弹层（主人） ===== */}}
+<div id="edit-wrap" class="bk-overlay fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+  <div class="bk-overlay-backdrop absolute inset-0" data-close="edit"></div>
+  <div class="bk-panel text-m-on-surface shadow-2xl">
+    <div class="sheet-handle"></div>
+    <div class="bk-titlebar">
+      <div class="bk-titlebar-side" aria-hidden="true"></div>
+      <div class="bk-titlebar-mid"><h2 id="edit-title" class="text-lg font-extrabold"></h2></div>
+      <div class="bk-titlebar-side"><button type="button" class="bk-icbtn" data-close="edit" aria-label="{{ if $isEn }}Close{{ else }}关闭{{ end }}">{{ partial "icon.html" (dict "name" "x-mark" "uid" "edit-x") }}</button></div>
+    </div>
+    <form id="edit-form" class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pb-4 flex flex-col gap-4" novalidate>
+      <div class="cu-field">
+        <label for="f-url">{{ if $isEn }}URL{{ else }}网址{{ end }}</label>
+        <div class="cu-inline">
+          <input id="f-url" type="url" inputmode="url" maxlength="2048" autocomplete="off" spellcheck="false" placeholder="https://">
+          <button id="f-fill" type="button" class="cu-btn-text">{{ if $isEn }}Auto-fill{{ else }}自动填写{{ end }}</button>
+        </div>
+      </div>
+      <label class="cu-field"><span>{{ if $isEn }}Name{{ else }}名字{{ end }}</span><input id="f-name" type="text" maxlength="80" autocomplete="off"></label>
+      <button id="f-en-toggle" type="button" class="cu-addlink">＋ {{ if $isEn }}Chinese name and note{{ else }}英文名和英文简介{{ end }}</button>
+      <div id="f-en-wrap" class="hidden flex flex-col gap-4">
+        <label class="cu-field"><span>{{ if $isEn }}Name (Chinese){{ else }}英文名{{ end }}</span><input id="f-name2" type="text" maxlength="80" autocomplete="off"></label>
+        <label class="cu-field"><span>{{ if $isEn }}Note (Chinese){{ else }}英文简介{{ end }}</span><input id="f-desc2" type="text" maxlength="160" autocomplete="off"></label>
+      </div>
+      <label class="cu-field"><span>{{ if $isEn }}Note{{ else }}简介{{ end }}</span><input id="f-desc" type="text" maxlength="160" autocomplete="off" placeholder="{{ if $isEn }}What it is, in a few words{{ else }}一句话说它是什么{{ end }}"></label>
+      <div class="cu-field">
+        <span>{{ if $isEn }}Category{{ else }}分类{{ end }}</span>
+        <div id="f-cats" class="cu-chipset" role="radiogroup" aria-label="{{ if $isEn }}Category{{ else }}分类{{ end }}"></div>
+        <div id="f-cat-new-row" class="cu-inline">
+          <input id="f-cat-name" type="text" maxlength="80" autocomplete="off" placeholder="{{ if $isEn }}New category{{ else }}新分类{{ end }}">
+          <button id="f-cat-add" type="button" class="cu-btn-text">{{ if $isEn }}Add{{ else }}添加{{ end }}</button>
+        </div>
+      </div>
+      <button id="f-icon-toggle" type="button" class="cu-addlink">＋ {{ if $isEn }}Custom icon{{ else }}自定义图标{{ end }}</button>
+      <label id="f-icon-wrap" class="cu-field hidden"><span>{{ if $isEn }}Icon URL (https){{ else }}图标网址（https）{{ end }}</span><input id="f-icon" type="url" inputmode="url" maxlength="2048" autocomplete="off" spellcheck="false"></label>
+      <label class="flex items-center gap-3 cursor-pointer">
+        <span class="flex-1 text-[15px]">{{ if $isEn }}Only me{{ else }}仅自己可见{{ end }}</span>
+        <input id="f-private" type="checkbox" class="peer sr-only">
+        <span class="shrink-0 w-12 h-7 rounded-full bg-[var(--sgx-switch-track-off)] peer-checked:bg-[var(--sgx-switch-track-on)] relative transition-colors after:content-[''] after:absolute after:top-1 after:left-1 after:w-5 after:h-5 after:rounded-full after:bg-[var(--sgx-switch-thumb-off)] peer-checked:after:bg-[var(--sgx-switch-thumb-on)] after:shadow after:transition-transform peer-checked:after:translate-x-5"></span>
+      </label>
+      <div id="f-move" class="cu-move hidden">
+        <span>{{ if $isEn }}Position{{ else }}位置{{ end }}</span>
+        <button id="f-up" type="button" class="cu-rbtn" aria-label="{{ if $isEn }}Move up{{ else }}上移{{ end }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
+        <button id="f-down" type="button" class="cu-rbtn" aria-label="{{ if $isEn }}Move down{{ else }}下移{{ end }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      </div>
+      <p id="edit-err" class="hidden text-sm text-m-error"></p>
+    </form>
+    <div class="shrink-0 px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-[var(--sgx-divider)] flex gap-3">
+      <button id="edit-del" type="button" class="hidden flex-1 h-12 rounded-full bg-m-container text-m-error text-[15px] font-bold">{{ if $isEn }}Delete{{ else }}删除{{ end }}</button>
+      <button id="edit-save" type="button" class="flex-1 h-12 rounded-full bg-m-primary text-m-on-primary text-[15px] font-bold">{{ if $isEn }}Save{{ else }}保存{{ end }}</button>
+    </div>
+  </div>
+</div>
+
+{{/* ===== 管理分类（主人）：改名、私密、上下移、删（空的才能删）、新建 ===== */}}
+<div id="cats-wrap" class="bk-overlay fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="cats-title">
+  <div class="bk-overlay-backdrop absolute inset-0" data-close="cats"></div>
+  <div class="bk-panel text-m-on-surface shadow-2xl">
+    <div class="sheet-handle"></div>
+    <div class="bk-titlebar">
+      <div class="bk-titlebar-side" aria-hidden="true"></div>
+      <div class="bk-titlebar-mid"><h2 id="cats-title" class="text-lg font-extrabold">{{ if $isEn }}Categories{{ else }}管理分类{{ end }}</h2></div>
+      <div class="bk-titlebar-side"><button type="button" class="bk-icbtn" data-close="cats" aria-label="{{ if $isEn }}Close{{ else }}关闭{{ end }}">{{ partial "icon.html" (dict "name" "x-mark" "uid" "cats-x") }}</button></div>
+    </div>
+    <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] flex flex-col gap-3">
+      <div id="cats-list" class="flex flex-col gap-2"></div>
+      <div class="cu-inline">
+        <input id="cats-new" type="text" maxlength="80" autocomplete="off" placeholder="{{ if $isEn }}New category{{ else }}新分类{{ end }}">
+        <button id="cats-add" type="button" class="cu-btn-text">{{ if $isEn }}Add{{ else }}添加{{ end }}</button>
+      </div>
+      <p class="text-xs text-m-on-surface-variant">{{ if $isEn }}A category can be deleted once it's empty. Private categories are hidden from visitors with everything in them.{{ else }}分类清空后才能删除。私密分类连同里面的收藏都不给访客看。{{ end }}</p>
+    </div>
+  </div>
+</div>
+
+{{/* ===== 导入浏览器书签（主人） ===== */}}
+<div id="import-wrap" class="bk-overlay fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="import-title">
+  <div class="bk-overlay-backdrop absolute inset-0" data-close="import"></div>
+  <div class="bk-panel bk-dialog text-m-on-surface shadow-2xl">
+    <div class="sheet-handle"></div>
+    <div class="bk-titlebar">
+      <div class="bk-titlebar-side" aria-hidden="true"></div>
+      <div class="bk-titlebar-mid"><h2 id="import-title" class="text-lg font-extrabold">{{ if $isEn }}Import bookmarks{{ else }}导入浏览器书签{{ end }}</h2></div>
+      <div class="bk-titlebar-side"><button type="button" class="bk-icbtn" data-close="import" aria-label="{{ if $isEn }}Close{{ else }}关闭{{ end }}">{{ partial "icon.html" (dict "name" "x-mark" "uid" "import-x") }}</button></div>
+    </div>
+    <div class="px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] flex flex-col gap-4">
+      <p class="text-sm leading-relaxed text-m-on-surface-variant">{{ if $isEn }}Export bookmarks from Samsung Internet, Chrome or any browser as an .html file, then pick it here. Folders become categories, links you already have are skipped, and the original file is kept as a backup.{{ else }}在三星浏览器、Chrome 等浏览器里把书签导出成 .html 文件，再在这里选它。文件夹会变成分类，已经收藏过的网址自动跳过，原文件会另存一份备份。{{ end }}</p>
+      <label class="cu-file">
+        <input id="imp-file" type="file" accept=".html,.htm,text/html" class="sr-only">
+        <span id="imp-file-name">{{ if $isEn }}Choose file{{ else }}选择文件{{ end }}</span>
+      </label>
+      <label class="flex items-center gap-3 cursor-pointer">
+        <span class="flex-1 text-[15px]">{{ if $isEn }}Import as only me{{ else }}导入为仅自己可见{{ end }}</span>
+        <input id="imp-private" type="checkbox" class="peer sr-only" checked>
+        <span class="shrink-0 w-12 h-7 rounded-full bg-[var(--sgx-switch-track-off)] peer-checked:bg-[var(--sgx-switch-track-on)] relative transition-colors after:content-[''] after:absolute after:top-1 after:left-1 after:w-5 after:h-5 after:rounded-full after:bg-[var(--sgx-switch-thumb-off)] peer-checked:after:bg-[var(--sgx-switch-thumb-on)] after:shadow after:transition-transform peer-checked:after:translate-x-5"></span>
+      </label>
+      <p id="imp-msg" class="hidden text-sm"></p>
+      <button id="imp-go" type="button" class="h-12 rounded-full bg-m-primary text-m-on-primary text-[15px] font-bold disabled:opacity-50" disabled>{{ if $isEn }}Import{{ else }}导入{{ end }}</button>
+    </div>
+  </div>
+</div>
+
+{{/* ===== 确认（删收藏 / 删分类） ===== */}}
+<div id="confirm-wrap" class="bk-overlay fixed inset-0 z-[70]" role="alertdialog" aria-modal="true" aria-labelledby="confirm-msg">
+  <div class="bk-overlay-backdrop absolute inset-0" data-close="confirm"></div>
+  <div class="bk-panel bk-dialog text-m-on-surface shadow-2xl">
+    <div class="px-6 pt-6 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+      <p id="confirm-msg" class="text-[15px] leading-relaxed text-center"></p>
+      <div class="flex gap-3 mt-5">
+        <button id="confirm-cancel" type="button" class="flex-1 h-12 rounded-full bg-m-container text-m-on-surface text-[15px] font-bold">{{ if $isEn }}Cancel{{ else }}取消{{ end }}</button>
+        <button id="confirm-ok" type="button" class="flex-1 h-12 rounded-full bg-m-error text-m-on-error text-[15px] font-bold"></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="bk-toast" class="hidden fixed left-1/2 -translate-x-1/2 bottom-24 z-[80] max-w-[calc(100vw-2rem)] px-4 py-3 rounded-2xl bg-m-inverse-surface text-m-inverse-on-surface text-sm shadow-lg" role="status"></div>
+{{ end }}
+
+{{ define "pagejs" }}
+<script src="{{ (resources.Get "js/curio.js" | minify | fingerprint).RelPermalink }}"></script>
+{{ end }}

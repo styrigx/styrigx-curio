@@ -1,0 +1,27 @@
+title: '珍格'
+baseURL: 'https://curio.styrigx.com/'
+defaultContentLanguage: zh
+defaultContentLanguageInSubdir: false
+hasCJKLanguage: true
+languages:
+  zh:
+    label: 中文
+    weight: 1
+  en:
+    label: English
+    weight: 2
+theme: []
+
+enableRobotsTXT: true
+enableEmoji: true
+
+markup:
+  goldmark:
+    renderer:
+      unsafe: true
+
+params:
+  description: 'Sloan Gray 的珍格：在网上偶然遇到、想留下的好东西'
+  version: '0.1.0'
+
+disableKinds: ['taxonomy', 'term', 'rss', 'section']

@@ -1,0 +1,284 @@
+{
+  "_note": "珍格初始收藏：迁自 styrigx-space 主站书签（web/data/links.yaml，2026-10-21），补回 blog.styrigx.com。只在 migrations/0002_seed.sql 里用一次（由 scripts/gen-seed-sql.mjs 生成），之后以 D1 为准。",
+  "cats": [
+    {
+      "name": {
+        "zh": "我的主页",
+        "en": "My profiles"
+      },
+      "links": [
+        {
+          "url": "https://github.com/styrigx",
+          "name": {
+            "zh": "GitHub",
+            "en": "GitHub"
+          },
+          "desc": {
+            "zh": "开源项目",
+            "en": "Open source"
+          }
+        },
+        {
+          "url": "https://x.com/styrigx",
+          "name": {
+            "zh": "X",
+            "en": "X"
+          },
+          "desc": {
+            "zh": "日常动态",
+            "en": "Daily updates"
+          }
+        }
+      ]
+    },
+    {
+      "name": {
+        "zh": "我的项目",
+        "en": "My projects"
+      },
+      "links": [
+        {
+          "url": "https://blog.styrigx.com",
+          "name": {
+            "zh": "博客",
+            "en": "Blog"
+          },
+          "desc": {
+            "zh": "Sloan Gray 的博客",
+            "en": "Sloan Gray’s blog"
+          }
+        },
+        {
+          "url": "https://muse-invite.styrigx.com",
+          "name": {
+            "zh": "邀请码站",
+            "en": "Invite Codes"
+          },
+          "desc": {
+            "zh": "Muse 邀请码免费共享",
+            "en": "Free Muse invite codes"
+          }
+        }
+      ]
+    },
+    {
+      "name": {
+        "zh": "AI 资讯与 Agent",
+        "en": "AI News & Agents"
+      },
+      "links": [
+        {
+          "url": "https://www.therundown.ai",
+          "name": {
+            "zh": "The Rundown AI",
+            "en": "The Rundown AI"
+          },
+          "desc": {
+            "zh": "每日 5 分钟 AI 新闻",
+            "en": "Daily AI news in 5 minutes"
+          }
+        },
+        {
+          "url": "https://tldr.tech/ai",
+          "name": {
+            "zh": "TLDR AI",
+            "en": "TLDR AI"
+          },
+          "desc": {
+            "zh": "AI 日报",
+            "en": "AI daily digest"
+          }
+        },
+        {
+          "url": "https://www.testingcatalog.com",
+          "name": {
+            "zh": "TestingCatalog",
+            "en": "TestingCatalog"
+          },
+          "desc": {
+            "zh": "AI 新功能与爆料",
+            "en": "AI features & leaks"
+          }
+        },
+        {
+          "url": "https://airtap.ai",
+          "name": {
+            "zh": "Airtap",
+            "en": "Airtap"
+          },
+          "desc": {
+            "zh": "替你操作手机 App 的 AI",
+            "en": "AI that runs your phone apps"
+          }
+        },
+        {
+          "url": "https://hark.com",
+          "name": {
+            "zh": "Hark",
+            "en": "Hark"
+          },
+          "desc": {
+            "zh": "个人 AI 助理",
+            "en": "Personal AI assistant"
+          }
+        }
+      ]
+    },
+    {
+      "name": {
+        "zh": "开发与云",
+        "en": "Dev & Cloud"
+      },
+      "links": [
+        {
+          "url": "https://github.com",
+          "name": {
+            "zh": "GitHub",
+            "en": "GitHub"
+          },
+          "desc": {
+            "zh": "代码托管",
+            "en": "Code hosting"
+          }
+        },
+        {
+          "url": "https://dash.cloudflare.com",
+          "name": {
+            "zh": "Cloudflare",
+            "en": "Cloudflare"
+          },
+          "desc": {
+            "zh": "域名、CDN 与 Pages",
+            "en": "Domains, CDN & Pages"
+          }
+        },
+        {
+          "url": "https://supabase.com",
+          "name": {
+            "zh": "Supabase",
+            "en": "Supabase"
+          },
+          "desc": {
+            "zh": "Postgres 后端平台",
+            "en": "Postgres backend platform"
+          }
+        },
+        {
+          "url": "https://www.aliyun.com",
+          "name": {
+            "zh": "阿里云",
+            "en": "Alibaba Cloud"
+          },
+          "desc": {
+            "zh": "国内云服务",
+            "en": "Cloud services in China"
+          }
+        },
+        {
+          "url": "https://www.keil.arm.com/mdk-community/",
+          "name": {
+            "zh": "Keil MDK",
+            "en": "Keil MDK"
+          },
+          "desc": {
+            "zh": "嵌入式开发社区版",
+            "en": "Embedded dev, community edition"
+          }
+        },
+        {
+          "url": "https://support.broadcom.com",
+          "name": {
+            "zh": "Broadcom Support",
+            "en": "Broadcom Support"
+          },
+          "desc": {
+            "zh": "VMware 等软件下载",
+            "en": "VMware & software downloads"
+          }
+        }
+      ]
+    },
+    {
+      "name": {
+        "zh": "网络检测",
+        "en": "Network Tests"
+      },
+      "links": [
+        {
+          "url": "https://ipleak.net",
+          "name": {
+            "zh": "IPLeak",
+            "en": "IPLeak"
+          },
+          "desc": {
+            "zh": "IP、DNS 与 WebRTC 泄露检测",
+            "en": "IP, DNS & WebRTC leak test"
+          }
+        },
+        {
+          "url": "https://browserleaks.com/dns",
+          "name": {
+            "zh": "BrowserLeaks",
+            "en": "BrowserLeaks"
+          },
+          "desc": {
+            "zh": "DNS 泄露与浏览器指纹",
+            "en": "DNS leak & fingerprint"
+          }
+        },
+        {
+          "url": "https://whoer.net/zh",
+          "name": {
+            "zh": "Whoer",
+            "en": "Whoer"
+          },
+          "desc": {
+            "zh": "IP 与匿名度检查",
+            "en": "IP & anonymity check"
+          }
+        },
+        {
+          "url": "https://ip.sb",
+          "name": {
+            "zh": "IP.SB",
+            "en": "IP.SB"
+          },
+          "desc": {
+            "zh": "IPv4 / IPv6 地址查询",
+            "en": "IPv4 & IPv6 lookup"
+          }
+        }
+      ]
+    },
+    {
+      "name": {
+        "zh": "发现与学习",
+        "en": "Discover & Learn"
+      },
+      "links": [
+        {
+          "url": "https://alternativeto.net",
+          "name": {
+            "zh": "AlternativeTo",
+            "en": "AlternativeTo"
+          },
+          "desc": {
+            "zh": "找软件替代品",
+            "en": "Find software alternatives"
+          }
+        },
+        {
+          "url": "https://developer.mozilla.org",
+          "name": {
+            "zh": "MDN",
+            "en": "MDN"
+          },
+          "desc": {
+            "zh": "Web 开发文档",
+            "en": "Web docs"
+          }
+        }
+      ]
+    }
+  ]
+}
