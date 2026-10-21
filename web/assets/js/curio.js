@@ -218,10 +218,10 @@ function tileHTML(l, c){
   var name = pick(l.name, isEn) || hostOf(l.url);
   var desc = pick(l.desc, isEn) || hostOf(l.url);
   var locked = owner && (l.private || c.private);
-  return '<a class="cu-tile" href="' + esc(l.url) + '" target="_blank" rel="noopener noreferrer" data-id="' + l.id + '" title="' + esc(l.url) + '">'
+  return '<a class="cu-tile" href="' + esc(l.url) + '" target="_blank" rel="noopener noreferrer" data-id="' + l.id + '" title="' + esc(desc + ' · ' + l.url) + '">'
     + '<span class="cu-ic" style="--cu-h:' + hue(l.url) + '"><span class="cu-ic-letter" aria-hidden="true">' + esc(initial(name, l.url)) + '</span>'
-    + '<img src="/api/icon?id=' + l.id + '" alt="" width="40" height="40" loading="lazy" decoding="async" onerror="this.remove()"></span>'
-    + '<span class="cu-txt"><span class="cu-name">' + esc(name) + '</span><span class="cu-desc">' + esc(desc) + '</span></span>'
+    + '<img src="/api/icon?id=' + l.id + '" alt="" width="48" height="48" loading="lazy" decoding="async" onerror="this.remove()"></span>'
+    + '<span class="cu-name">' + esc(name) + '</span>'
     + (locked ? '<span class="cu-lock" role="img" aria-label="' + esc(T.priv) + '" title="' + esc(T.priv) + '">' + LOCK + '</span>' : '')
     + '</a>';
 }
