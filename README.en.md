@@ -16,7 +16,7 @@ Curio (奇趣): good things found on the web, kept one by one.
 
 A sub-site of Styrigx's Space, split out of the main site's bookmarks (2026-10-21) into its own repo, Pages project, Worker, D1 database and R2 bucket.
 
-- **Categories and tiles**: each tile shows the site's icon, name and a one-line note; tap to open in a new tab. The search box in the top bar filters instantly.
+- **Three tabs** in the top bar (swipe works too): **Finds** (saved sites: categories and tiles, tap to open), **Devices** (photo, type, bought / retired dates with days in use worked out, system version, specs, accessories, notes, and what replaced it) and **Games** (cover, platform, device played on, version, status, rating, thoughts).
 - **Icons**: fetched once by the Worker (apple-touch-icon / favicon) and cached in R2 per host; a coloured initial when none can be found.
 - **Owner**: "Keep" with auto-fill, long-press a tile to edit, manage categories from the "⋯" menu.
 - **Import browser bookmarks**: the `.html` export from Samsung Internet, Chrome and others. Folders become categories, known URLs are skipped, imports are private by default, and the original file is stored in R2 before anything is written.

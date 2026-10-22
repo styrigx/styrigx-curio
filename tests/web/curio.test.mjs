@@ -74,3 +74,48 @@ test('importSummary：中英文', () => {
   assert.equal(C.importSummary({ added: 12, cats_added: 2, skipped: 3 }, false), '新增 12 条、2 个分类，3 条已经有了。');
   assert.equal(C.importSummary({ added: 1, cats_added: 0, skipped: 0 }, true), 'Added 1 link.');
 });
+
+/* ===== 设备 / 游戏（curio-items.js）、页签（curio-tabs.js） ===== */
+const IT = require('../../web/assets/js/curio-items.js');
+const TB = require('../../web/assets/js/curio-tabs.js');
+
+test('usedDays：购买当天算第 1 天，退役了算到退役日；没填 / 倒了返回 null；daysText 满一年带年数', () => {
+  assert.equal(IT.usedDays('2026-10-22', '', '2026-10-22'), 1);
+  assert.equal(IT.usedDays('2024-02-28', '2024-03-01', '2026-01-01'), 3, '闰年');
+  assert.equal(IT.usedDays('2025-10-22', '', '2026-10-22'), 366);
+  assert.equal(IT.usedDays('', '', '2026-10-22'), null);
+  assert.equal(IT.usedDays('2026-10-23', '', '2026-10-22'), null);
+  assert.equal(IT.daysText(30, false), '30 天');
+  assert.equal(IT.daysText(731, false), '731 天 · 约 2 年');
+  assert.equal(IT.daysText(1, true), '1 day');
+  assert.equal(IT.daysText(400, true), '400 days · about 1.1 years');
+  assert.match(IT.todayStr(Date.UTC(2026, 9, 22, 12)), /^2026-10-2[12]$/);
+});
+
+test('筛选、换代历史、平台联想、缩图尺寸', () => {
+  const D = [{ id: 1, retired_at: '2025-01-01', replaced_by: 2 }, { id: 2, retired_at: '', replaced_by: 0 }, { id: 3, retired_at: '2024-01-01', replaced_by: 2 }];
+  assert.deepEqual(IT.filterDevices(D, 'active').map((d) => d.id), [2]);
+  assert.deepEqual(IT.filterDevices(D, 'retired').map((d) => d.id), [1, 3]);
+  assert.equal(IT.filterDevices(D, 'all').length, 3);
+  assert.deepEqual(IT.lineage(D, 2).before.map((d) => d.id), [1, 3]);
+  assert.equal(IT.lineage(D, 1).after.id, 2);
+  assert.equal(IT.lineage(D, 2).after, null);
+  const Gs = [{ status: 'done', platform: 'Switch' }, { status: 'want', platform: ' PC ' }, { status: 'done', platform: 'Switch' }, { status: 'want', platform: '' }];
+  assert.equal(IT.filterGames(Gs, 'done').length, 2);
+  assert.equal(IT.filterGames(Gs, 'all').length, 4);
+  assert.deepEqual(IT.platformsOf(Gs), ['Switch', 'PC']);
+  assert.deepEqual(IT.fitSize(4000, 3000, 1600), { w: 1600, h: 1200 });
+  assert.deepEqual(IT.fitSize(800, 600, 1600), { w: 800, h: 600 });
+  assert.deepEqual(IT.KINDS.length, 9);
+  assert.deepEqual(IT.STATUS, ['want', 'playing', 'done', 'shelved']);
+});
+
+test('页签 hash：#devices / #games，其余都是发现；切回发现保留 #c/<id>', () => {
+  assert.equal(TB.tabOf('#devices'), 'devices');
+  assert.equal(TB.tabOf('#games'), 'games');
+  assert.equal(TB.tabOf('#c/3'), 'finds');
+  assert.equal(TB.tabOf(''), 'finds');
+  assert.equal(TB.hashFor('finds', '#c/3'), '#c/3');
+  assert.equal(TB.hashFor('finds', '#games'), '');
+  assert.equal(TB.hashFor('games', '#c/3'), '#games');
+});

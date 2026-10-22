@@ -22,6 +22,6 @@ markup:
 
 params:
   description: 'Sloan Gray 的奇趣：在网上偶然遇到、想留下的好东西'
-  version: '0.1.0'
+  version: '0.2.0'
 
 disableKinds: ['taxonomy', 'term', 'rss', 'section']
