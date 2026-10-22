@@ -92,7 +92,7 @@ jobs:
 
   # 只在 main 推送时部署，测试 job 不碰任何钥匙。命名一一对应（同 auth gateway）：
   #   Cloudflare token 名 = GitHub 环境名 = 环境密钥名（大写、横线换下划线）
-  #   styrigx-curio-core-deploy  -> STYRIGX_CURIO_CORE_DEPLOY   D1 + Workers Scripts + Workers R2 Storage + Account Settings 读 + Workers Routes（styrigx.com）
+  #   styrigx-curio-core-deploy  -> STYRIGX_CURIO_CORE_DEPLOY   D1 + Workers Scripts + Workers R2 Storage + Workers KV Storage（全站搜索索引 SEARCH_KV）+ Account Settings 读 + Workers Routes（styrigx.com）
   #   styrigx-curio-pages-deploy -> STYRIGX_CURIO_PAGES_DEPLOY  Cloudflare Pages + Account Settings 读（仓库级密钥，同 space：只能推静态页面，不碰数据）
   # 只有 core 环境限 main；CLOUDFLARE_ACCOUNT_ID 不是钥匙，留在仓库级。
   deploy-core:
