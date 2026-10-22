@@ -21,7 +21,8 @@ styrigx-curio/
 |---|---|
 | `hugo.yaml` | Hugo 配置（`params.version` 是版本号，README 徽章读它） |
 | `wrangler.toml` | Pages 项目 `styrigx-curio`：不带变量、钥匙和绑定 |
-| `layouts/_default/baseof.html` | 沉浸式 app 顶栏（九宫格 · 发现 / 设备 / 游戏 分段滑块 · 头像）、导航抽屉（主站共享外壳 `assets/sgx-shell/nav.json`） |
+| `layouts/_default/baseof.html` | 沉浸式 app 顶栏（九宫格 · 首页 发现 / 设备 / 游戏 分段滑块、其他页页名 · 留言板圆）、导航抽屉（主站共享外壳 `assets/sgx-shell/nav.json`）；没有页脚 |
+| `layouts/_default/guestbook.html` | 留言板 `/guestbook/`（`content/guestbook.md`、`content/en/guestbook.md`）：三个子站共用的 Giscus 讨论串（`hugo.yaml` 的 `params.guestbook.giscus`），`assets/js/guestbook.js` 插入并跟深浅色 |
 | `layouts/index.html` | 首页三个面板：发现（分类条、格子、收藏 / 编辑弹层、管理分类、导入、确认框）、设备、游戏（列表、详情、编辑弹层） |
 | `assets/js/curio.js` | 「发现」页签；纯函数导出给 `tests/web/curio.test.mjs`；确认框 / 提示条 / 弹层开关给另两个页签用（`SgxCurioUI`） |
 | `assets/js/curio-items.js` | 「设备」「游戏」页签（列表、详情、编辑、照片缩图上传）；纯函数同上 |

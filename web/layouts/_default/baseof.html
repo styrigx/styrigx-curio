@@ -44,12 +44,14 @@ __applyLayout();
 </head>
 <body class="text-m-on-surface font-sans antialiased">
 <div id="sgx-wallpaper" aria-hidden="true"></div>
-{{/* 顶栏（沉浸式 app，同日刻 / 博客，2026-10-22 定）：左圆九宫格（导航抽屉）· 中间长条 = 分段滑块 · 右圆头像。没有搜索栏。
-   长条里三个页签：发现 · 设备 · 游戏（Finds / Devices / Games，强调色滑块）。
+{{/* 顶栏（沉浸式 app，三个子站同主站 v8 一套，2026-10-22 定）：左圆九宫格（导航抽屉）· 中间长条 · 右圆 留言板。
+   长条：首页 = 分段滑块 发现 · 设备 · 游戏（Finds / Devices / Games，强调色滑块；同主站首页长条里放三个标签）；
+   其他页（留言板、404）= 只有页名（.sgx-tb-title，居中、太长省略号），不放图标。
    首页：页签是 role=tab 的按钮，curio-tabs.js 切换面板（hash：发现 = 无或 #c/<分类>，#devices，#games）。
-   其他页（404）：页签是回首页对应页签的链接，不高亮。
-   头像只展示，不可点击。外观和语言跟主站（sgx-ui cookie，见 ui-inherit-run.js）。 */}}
-{{ $home := cond $isEn "/en/" "/" }}
+   右圆 .sgx-tb-end（共享外壳样式，52px 圆 + 22px 图标）= 留言板入口：链到本站 /guestbook/（英文 /en/guestbook/），三个子站同一个图标、同一个 Giscus 讨论串。
+   头像在导航抽屉头（链主站）。外观和语言跟主站（sgx-ui cookie，见 ui-inherit-run.js）。 */}}
+{{ $pageName := .Title }}
+{{ if eq .Kind "404" }}{{ $pageName = cond $isEn "Page not found" "页面不存在" }}{{ end }}
 {{ $tabs := slice
   (dict "id" "finds" "zh" "发现" "en" "Finds" "hash" "")
   (dict "id" "devices" "zh" "设备" "en" "Devices" "hash" "#devices")
@@ -67,13 +69,11 @@ __applyLayout();
         {{ end }}
       </div>
       {{ else }}
-      <nav class="sgx-seg sgx-seg--none" aria-label="{{ if $isEn }}Curio sections{{ else }}奇趣分区{{ end }}">
-        <span class="sgx-seg-ind" aria-hidden="true"></span>
-        {{ range $tabs }}<a class="sgx-seg-btn" href="{{ $home }}{{ .hash }}">{{ cond $isEn .en .zh }}</a>{{ end }}
-      </nav>
+      <span class="sgx-tb-title">{{ $pageName }}</span>
       {{ end }}
     </div>
-    <span class="sgx-tb-me" aria-hidden="true"><img src="https://styrigx.com/avatar/192.webp" alt="" width="52" height="52" class="sgx-tb-avatar"></span>
+    {{ $gb := cond $isEn "/en/guestbook/" "/guestbook/" }}
+    <a class="sgx-tb-end sgx-tb-guestbook" href="{{ $gb }}" aria-label="{{ if $isEn }}Guestbook{{ else }}留言板{{ end }}"{{ if eq .RelPermalink $gb }} aria-current="page"{{ end }}>{{ partial "icon.html" "pen-line" }}</a>
   </div>
 </header>
 
@@ -109,12 +109,6 @@ __applyLayout();
   </nav>
 </dialog>
 {{ block "main" . }}{{ end }}
-<footer class="relative z-10 mt-4">
-  <div class="max-w-[1100px] mx-auto px-6 py-8 text-center">
-    <p class="text-xs text-m-on-surface-variant">© 2020–2026 Sloan Gray</p>
-    <p class="sgx-powered">Powered by Styrigx UI</p>
-  </div>
-</footer>
 {{/* 顶栏：导航抽屉 */}}
 {{/* 原地搜索层（共享外壳 search.js + 本站宿主），先于 topbar.js 建好 DOM */}}
 <script src="{{ (resources.Get "js/sgx/search-host.js" | js.Build (dict "format" "iife" "minify" true "target" "es2018") | fingerprint).RelPermalink }}"></script>
