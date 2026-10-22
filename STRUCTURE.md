@@ -21,9 +21,11 @@ styrigx-curio/
 |---|---|
 | `hugo.yaml` | Hugo 配置（`params.version` 是版本号，README 徽章读它） |
 | `wrangler.toml` | Pages 项目 `styrigx-curio`：不带变量、钥匙和绑定 |
-| `layouts/_default/baseof.html` | 沉浸式 app 顶栏（九宫格 · 搜索框 · 头像）、导航抽屉（主站共享外壳 `assets/sgx-shell/nav.json`） |
-| `layouts/index.html` | 首页：分类条、格子、收藏 / 编辑弹层、管理分类、导入、确认框 |
-| `assets/js/curio.js` | 首页逻辑；纯函数导出给 `tests/web/curio.test.mjs` |
+| `layouts/_default/baseof.html` | 沉浸式 app 顶栏（九宫格 · 发现 / 设备 / 游戏 分段滑块 · 头像）、导航抽屉（主站共享外壳 `assets/sgx-shell/nav.json`） |
+| `layouts/index.html` | 首页三个面板：发现（分类条、格子、收藏 / 编辑弹层、管理分类、导入、确认框）、设备、游戏（列表、详情、编辑弹层） |
+| `assets/js/curio.js` | 「发现」页签；纯函数导出给 `tests/web/curio.test.mjs`；确认框 / 提示条 / 弹层开关给另两个页签用（`SgxCurioUI`） |
+| `assets/js/curio-items.js` | 「设备」「游戏」页签（列表、详情、编辑、照片缩图上传）；纯函数同上 |
+| `assets/js/curio-tabs.js` | 三个页签的切换（hash、滑块、左右滑、右下角按钮） |
 | `assets/js/topbar.js` | 导航抽屉开关 |
 | `assets/js/sgx/` | 外观和语言继承主站（`sgx-ui` cookie）；`shell/palette-scheme.js` 是主站共享外壳的自定义主题色引擎 |
 | `assets/sgx-shell/` | 主站共享外壳的抽屉项 + 图标、预设种子，`scripts/sync-shell.mjs` 同步，勿手改 |
@@ -42,12 +44,15 @@ styrigx-curio/
 | `src/api/import.js` | 导入浏览器书签：先备份原文到 R2，再 `json_each` 批量写入 |
 | `src/api/export.js` | 导出书签文件 |
 | `src/api/preview.js` | 抓网页标题、简介、图标 |
+| `src/api/items.js` | 设备和游戏：`GET` 列表，`POST {op}` 增删改排序（主人 + 同源；删条目连照片删） |
+| `src/api/photo.js` | 设备照片 / 游戏封面：读、传、删（R2 `photos/`） |
 | `src/api/icon.js` | 图标：R2 缓存，没有就现抓（只抓公网地址），抓不到记「没有」7 天 |
-| `src/api/_store.js` | 表结构、校验、读写 |
+| `src/api/_store.js` | 收藏的表结构、校验、读写 |
+| `src/api/_items.js` | 设备、游戏的表结构、校验、读写 |
 | `src/api/_netscape.js` | 书签文件的解析和生成 |
 | `src/api/_preview.js` | 抓网页 + 地址安全检查（不抓内网 / 本机 / 自家域名） |
 | `src/api/_auth.js` `_lib.js` `_write.js` | 问网关、JSON 响应、同源 / 同站检查、读 body |
-| `migrations/` | D1 迁移：`0001_init`（cats、links、imports）、`0002_seed`（初始收藏，由 `scripts/gen-seed-sql.mjs` 生成） |
+| `migrations/` | D1 迁移：`0001_init`（cats、links、imports）、`0002_seed`（初始收藏，由 `scripts/gen-seed-sql.mjs` 生成）、`0003_devices_games`（devices、games） |
 
 ## 部署顺序（CI）
 

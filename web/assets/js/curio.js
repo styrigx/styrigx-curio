@@ -1,6 +1,7 @@
 /* assets/js/curio.js —— 奇趣首页逻辑（浏览器 IIFE；node 测试时导出纯函数）。
  *
- * - 分类筛选条（全部 + 每个分类，hash #c/<分类 id>，只用 replaceState）；顶栏长条里的搜索框即时筛选名字 / 简介 / 网址（不分大小写）。
+ * - 「发现」页签（顶栏分段滑块，切换在 curio-tabs.js）：分类筛选条（全部 + 每个分类，hash #c/<分类 id>，只用 replaceState）。
+ *   顶栏没有搜索栏（2026-10-22 起）；filterCats 仍支持搜索词，留给以后。
  * - 按分类分组的格子：图标（/api/icon?id=，R2 缓存；取不到显示首字母方块）、名字、简介；私密的带小锁（只有主人看得到私密的）。
  *   点格子在新标签页打开网址。
  * - 主人：右下角「收藏」新建；长按格子（或键盘 Enter 以外的 E 键）编辑；分类条右边「⋯」：管理分类 / 导入浏览器书签 / 导出书签。
@@ -207,6 +208,8 @@ function ask(msg, okLabel, fn){
 }
 $('#confirm-cancel').addEventListener('click', function(){ confirmFn = null; closeOverlay('confirm-wrap'); });
 $('#confirm-ok').addEventListener('click', function(){ var f = confirmFn; confirmFn = null; closeOverlay('confirm-wrap'); if (f) f(); });
+/* 设备 / 游戏页签（curio-items.js）共用确认框、提示条、弹层开关 */
+G.SgxCurioUI = { ask: function(m, l, f){ ask(m, l, f); }, toast: function(m){ toast(m); }, openOverlay: openOverlay, closeOverlay: closeOverlay };
 
 /* ---------- 画 ---------- */
 var LOCK = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
@@ -262,17 +265,6 @@ $('#cu-chips').addEventListener('click', function(e){
   render();
   G.scrollTo({ top: 0, behavior: 'auto' });
 });
-var qInput = $('#cu-q');
-if (qInput) {
-  qInput.addEventListener('input', function(){
-    query = qInput.value;
-    $('#cu-q-clear').classList.toggle('hidden', !query);
-    render();
-  });
-  qInput.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); qInput.blur(); } });
-  $('#cu-q-clear').addEventListener('click', function(){ qInput.value = ''; query = ''; $('#cu-q-clear').classList.add('hidden'); render(); qInput.focus(); });
-}
-
 /* ---------- 编辑 ---------- */
 function setErr(msg){ var el = $('#edit-err'); el.textContent = msg || ''; el.classList.toggle('hidden', !msg); }
 function renderCatPicker(){

@@ -1,9 +1,12 @@
 {{ define "main" }}
 {{ $isEn := or (eq .Lang "en") (hasPrefix .RelPermalink "/en/") }}
-{{/* 奇趣首页：分类筛选条 + 按分类分组的收藏格子（curio.js 画）。顶栏长条里的搜索框即时筛选。
-   主人（owner）：右下角「收藏」，长按格子编辑；分类条右边「⋯」菜单里有 管理分类 / 导入浏览器书签 / 导出书签。
-   访客只读、只看公开的。点格子在新标签页打开网址。数据全走 curio.styrigx.com/api/*（接口 Worker，见 workers/core）。 */}}
+{{/* 奇趣首页：三个页签（顶栏分段滑块，curio-tabs.js 切换；左右滑也能切）。
+   发现（cu-pane-finds，curio.js 画）：分类筛选条 + 按分类分组的收藏格子。主人：右下角「收藏」，长按格子编辑；「⋯」里有 管理分类 / 导入 / 导出。
+   设备（cu-pane-devices）、游戏（cu-pane-games）：curio-items.js 画，卡片 + 状态筛选条；点卡片看详情，主人在详情里编辑；右下角「设备」「游戏」新建。
+   访客只读、只看公开的。数据全走 curio.styrigx.com/api/*（接口 Worker，见 workers/core）。 */}}
 <main id="cu-main" class="w-full mx-auto" style="max-width:1100px;padding-left:16px;padding-right:16px">
+ <div id="cu-panes">
+  <section id="cu-pane-finds" class="cu-pane" role="tabpanel" aria-labelledby="cu-tab-finds">
   <div class="cu-bar">
     <div id="cu-chips" class="cu-chips" role="tablist" aria-label="{{ if $isEn }}Categories{{ else }}分类{{ end }}"></div>
     <button id="cu-menu-btn" type="button" class="cu-menu-btn hidden" aria-haspopup="dialog" aria-label="{{ if $isEn }}More{{ else }}更多{{ end }}">
@@ -13,7 +16,136 @@
   <div id="cu-list" class="cu-list"></div>
   <p id="cu-empty" class="hidden text-center py-16 text-[15px] text-m-on-surface-variant"></p>
   <p id="cu-loading" class="text-center py-16 text-sm text-m-on-surface-variant">{{ if $isEn }}Loading…{{ else }}加载中…{{ end }}</p>
+  </section>
+
+  <section id="cu-pane-devices" class="cu-pane" role="tabpanel" aria-labelledby="cu-tab-devices" hidden inert>
+    <div class="cu-bar"><div id="dv-chips" class="cu-chips" role="tablist" aria-label="{{ if $isEn }}Filter{{ else }}筛选{{ end }}"></div></div>
+    <div id="dv-list" class="it-grid"></div>
+    <p id="dv-empty" class="hidden text-center py-16 text-[15px] text-m-on-surface-variant"></p>
+    <p class="it-loading text-center py-16 text-sm text-m-on-surface-variant">{{ if $isEn }}Loading…{{ else }}加载中…{{ end }}</p>
+  </section>
+
+  <section id="cu-pane-games" class="cu-pane" role="tabpanel" aria-labelledby="cu-tab-games" hidden inert>
+    <div class="cu-bar"><div id="gm-chips" class="cu-chips" role="tablist" aria-label="{{ if $isEn }}Filter{{ else }}筛选{{ end }}"></div></div>
+    <div id="gm-list" class="it-grid"></div>
+    <p id="gm-empty" class="hidden text-center py-16 text-[15px] text-m-on-surface-variant"></p>
+    <p class="it-loading text-center py-16 text-sm text-m-on-surface-variant">{{ if $isEn }}Loading…{{ else }}加载中…{{ end }}</p>
+  </section>
+ </div>
 </main>
+
+{{/* ===== 设备 / 游戏（主人，右下角浮动按钮，跟着页签换） ===== */}}
+<button id="dv-fab" type="button" class="cu-fab it-fab hidden">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>{{ if $isEn }}Device{{ else }}设备{{ end }}
+</button>
+<button id="gm-fab" type="button" class="cu-fab it-fab hidden">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>{{ if $isEn }}Game{{ else }}游戏{{ end }}
+</button>
+
+{{/* ===== 详情（设备 / 游戏共用，curio-items.js 填内容；主人有「编辑」） ===== */}}
+<div id="it-view-wrap" class="bk-overlay fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="it-view-title">
+  <div class="bk-overlay-backdrop absolute inset-0" data-close="it-view"></div>
+  <div class="bk-panel text-m-on-surface shadow-2xl">
+    <div class="sheet-handle"></div>
+    <div class="bk-titlebar">
+      <div class="bk-titlebar-side"><button id="it-view-edit" type="button" class="bk-icbtn hidden" aria-label="{{ if $isEn }}Edit{{ else }}编辑{{ end }}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg></button></div>
+      <div class="bk-titlebar-mid"><h2 id="it-view-title" class="text-lg font-extrabold"></h2></div>
+      <div class="bk-titlebar-side"><button type="button" class="bk-icbtn" data-close="it-view" aria-label="{{ if $isEn }}Close{{ else }}关闭{{ end }}">{{ partial "icon.html" (dict "name" "x-mark" "uid" "itv-x") }}</button></div>
+    </div>
+    <div id="it-view-body" class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"></div>
+  </div>
+</div>
+
+{{/* ===== 设备：添加 / 编辑（主人） ===== */}}
+<div id="dv-edit-wrap" class="bk-overlay fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="dv-edit-title">
+  <div class="bk-overlay-backdrop absolute inset-0" data-close="dv-edit"></div>
+  <div class="bk-panel text-m-on-surface shadow-2xl">
+    <div class="sheet-handle"></div>
+    <div class="bk-titlebar">
+      <div class="bk-titlebar-side" aria-hidden="true"></div>
+      <div class="bk-titlebar-mid"><h2 id="dv-edit-title" class="text-lg font-extrabold"></h2></div>
+      <div class="bk-titlebar-side"><button type="button" class="bk-icbtn" data-close="dv-edit" aria-label="{{ if $isEn }}Close{{ else }}关闭{{ end }}">{{ partial "icon.html" (dict "name" "x-mark" "uid" "dve-x") }}</button></div>
+    </div>
+    <form id="dv-form" class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pb-4 flex flex-col gap-4" novalidate>
+      <div class="it-photo-row">
+        <span id="dv-photo-prev" class="it-photo-prev" aria-hidden="true"></span>
+        <div class="flex flex-col gap-2 items-start">
+          <label class="cu-btn-text it-file">{{ if $isEn }}Choose photo{{ else }}选照片{{ end }}<input id="dv-photo" type="file" accept="image/*" class="sr-only"></label>
+          <button id="dv-photo-del" type="button" class="cu-btn-text it-photo-del hidden">{{ if $isEn }}Remove photo{{ else }}去掉照片{{ end }}</button>
+        </div>
+      </div>
+      <label class="cu-field"><span>{{ if $isEn }}Name{{ else }}名字{{ end }}</span><input id="dv-name" type="text" maxlength="80" autocomplete="off" placeholder="{{ if $isEn }}e.g. Galaxy S25 Ultra{{ else }}比如 Galaxy S25 Ultra{{ end }}"></label>
+      <div class="cu-field"><span>{{ if $isEn }}Type{{ else }}类型{{ end }}</span><div id="dv-kind" class="cu-chipset" role="radiogroup" aria-label="{{ if $isEn }}Type{{ else }}类型{{ end }}"></div></div>
+      <div class="it-two">
+        <label class="cu-field"><span>{{ if $isEn }}Bought on{{ else }}购买日期{{ end }}</span><input id="dv-bought" type="date"></label>
+        <label class="cu-field"><span>{{ if $isEn }}System version{{ else }}系统版本{{ end }}</span><input id="dv-os" type="text" maxlength="120" autocomplete="off" placeholder="{{ if $isEn }}e.g. One UI 8{{ else }}比如 One UI 8{{ end }}"></label>
+      </div>
+      <label class="cu-field"><span>{{ if $isEn }}Specs{{ else }}参数{{ end }}</span><textarea id="dv-specs" rows="3" maxlength="4000" placeholder="{{ if $isEn }}Chip, memory, storage, colour…{{ else }}芯片、内存、存储、颜色……{{ end }}"></textarea></label>
+      <label class="cu-field"><span>{{ if $isEn }}Accessories{{ else }}配件{{ end }}</span><textarea id="dv-acc" rows="2" maxlength="4000" placeholder="{{ if $isEn }}Case, charger, earbuds…{{ else }}手机壳、充电器、耳机……{{ end }}"></textarea></label>
+      <label class="cu-field"><span>{{ if $isEn }}How it's been{{ else }}体验{{ end }}</span><textarea id="dv-notes" rows="4" maxlength="4000"></textarea></label>
+      <label class="flex items-center gap-3 cursor-pointer">
+        <span class="flex-1 text-[15px]">{{ if $isEn }}Retired{{ else }}已退役{{ end }}</span>
+        <input id="dv-retired" type="checkbox" class="peer sr-only">
+        <span class="shrink-0 w-12 h-7 rounded-full bg-[var(--sgx-switch-track-off)] peer-checked:bg-[var(--sgx-switch-track-on)] relative transition-colors after:content-[''] after:absolute after:top-1 after:left-1 after:w-5 after:h-5 after:rounded-full after:bg-[var(--sgx-switch-thumb-off)] peer-checked:after:bg-[var(--sgx-switch-thumb-on)] after:shadow after:transition-transform peer-checked:after:translate-x-5"></span>
+      </label>
+      <div id="dv-retire-wrap" class="it-two hidden">
+        <label class="cu-field"><span>{{ if $isEn }}Retired on{{ else }}退役日期{{ end }}</span><input id="dv-retired-at" type="date"></label>
+        <label class="cu-field"><span>{{ if $isEn }}Replaced by{{ else }}换成了{{ end }}</span><select id="dv-replaced" class="it-select"></select></label>
+      </div>
+      <label class="flex items-center gap-3 cursor-pointer">
+        <span class="flex-1 text-[15px]">{{ if $isEn }}Only me{{ else }}仅自己可见{{ end }}</span>
+        <input id="dv-private" type="checkbox" class="peer sr-only">
+        <span class="shrink-0 w-12 h-7 rounded-full bg-[var(--sgx-switch-track-off)] peer-checked:bg-[var(--sgx-switch-track-on)] relative transition-colors after:content-[''] after:absolute after:top-1 after:left-1 after:w-5 after:h-5 after:rounded-full after:bg-[var(--sgx-switch-thumb-off)] peer-checked:after:bg-[var(--sgx-switch-thumb-on)] after:shadow after:transition-transform peer-checked:after:translate-x-5"></span>
+      </label>
+      <p id="dv-err" class="hidden text-sm text-m-error"></p>
+    </form>
+    <div class="shrink-0 px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-[var(--sgx-divider)] flex gap-3">
+      <button id="dv-del" type="button" class="hidden flex-1 h-12 rounded-full bg-m-container text-m-error text-[15px] font-bold">{{ if $isEn }}Delete{{ else }}删除{{ end }}</button>
+      <button id="dv-save" type="button" class="flex-1 h-12 rounded-full bg-m-primary text-m-on-primary text-[15px] font-bold">{{ if $isEn }}Save{{ else }}保存{{ end }}</button>
+    </div>
+  </div>
+</div>
+
+{{/* ===== 游戏：添加 / 编辑（主人） ===== */}}
+<div id="gm-edit-wrap" class="bk-overlay fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="gm-edit-title">
+  <div class="bk-overlay-backdrop absolute inset-0" data-close="gm-edit"></div>
+  <div class="bk-panel text-m-on-surface shadow-2xl">
+    <div class="sheet-handle"></div>
+    <div class="bk-titlebar">
+      <div class="bk-titlebar-side" aria-hidden="true"></div>
+      <div class="bk-titlebar-mid"><h2 id="gm-edit-title" class="text-lg font-extrabold"></h2></div>
+      <div class="bk-titlebar-side"><button type="button" class="bk-icbtn" data-close="gm-edit" aria-label="{{ if $isEn }}Close{{ else }}关闭{{ end }}">{{ partial "icon.html" (dict "name" "x-mark" "uid" "gme-x") }}</button></div>
+    </div>
+    <form id="gm-form" class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pb-4 flex flex-col gap-4" novalidate>
+      <div class="it-photo-row">
+        <span id="gm-photo-prev" class="it-photo-prev it-photo-prev--cover" aria-hidden="true"></span>
+        <div class="flex flex-col gap-2 items-start">
+          <label class="cu-btn-text it-file">{{ if $isEn }}Choose cover{{ else }}选封面{{ end }}<input id="gm-photo" type="file" accept="image/*" class="sr-only"></label>
+          <button id="gm-photo-del" type="button" class="cu-btn-text it-photo-del hidden">{{ if $isEn }}Remove cover{{ else }}去掉封面{{ end }}</button>
+        </div>
+      </div>
+      <label class="cu-field"><span>{{ if $isEn }}Title{{ else }}名字{{ end }}</span><input id="gm-title" type="text" maxlength="80" autocomplete="off"></label>
+      <div class="cu-field"><span>{{ if $isEn }}Status{{ else }}状态{{ end }}</span><div id="gm-status" class="cu-chipset" role="radiogroup" aria-label="{{ if $isEn }}Status{{ else }}状态{{ end }}"></div></div>
+      <div class="it-two">
+        <label class="cu-field"><span>{{ if $isEn }}Platform{{ else }}平台{{ end }}</span><input id="gm-platform" type="text" maxlength="120" autocomplete="off" list="gm-platforms" placeholder="{{ if $isEn }}e.g. Switch, PC{{ else }}比如 Switch、PC{{ end }}"><datalist id="gm-platforms"></datalist></label>
+        <label class="cu-field"><span>{{ if $isEn }}Played on{{ else }}在哪台设备上{{ end }}</span><select id="gm-device" class="it-select"></select></label>
+      </div>
+      <label class="cu-field"><span>{{ if $isEn }}Version{{ else }}版本{{ end }}</span><input id="gm-edition" type="text" maxlength="120" autocomplete="off" placeholder="{{ if $isEn }}e.g. physical, deluxe, 1.2{{ else }}比如 实体版、豪华版、1.2{{ end }}"></label>
+      <div class="cu-field"><span>{{ if $isEn }}Rating{{ else }}评分{{ end }}</span><div id="gm-rating" class="it-stars" role="radiogroup" aria-label="{{ if $isEn }}Rating{{ else }}评分{{ end }}"></div></div>
+      <label class="cu-field"><span>{{ if $isEn }}Thoughts{{ else }}评价{{ end }}</span><textarea id="gm-review" rows="4" maxlength="4000"></textarea></label>
+      <label class="flex items-center gap-3 cursor-pointer">
+        <span class="flex-1 text-[15px]">{{ if $isEn }}Only me{{ else }}仅自己可见{{ end }}</span>
+        <input id="gm-private" type="checkbox" class="peer sr-only">
+        <span class="shrink-0 w-12 h-7 rounded-full bg-[var(--sgx-switch-track-off)] peer-checked:bg-[var(--sgx-switch-track-on)] relative transition-colors after:content-[''] after:absolute after:top-1 after:left-1 after:w-5 after:h-5 after:rounded-full after:bg-[var(--sgx-switch-thumb-off)] peer-checked:after:bg-[var(--sgx-switch-thumb-on)] after:shadow after:transition-transform peer-checked:after:translate-x-5"></span>
+      </label>
+      <p id="gm-err" class="hidden text-sm text-m-error"></p>
+    </form>
+    <div class="shrink-0 px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-[var(--sgx-divider)] flex gap-3">
+      <button id="gm-del" type="button" class="hidden flex-1 h-12 rounded-full bg-m-container text-m-error text-[15px] font-bold">{{ if $isEn }}Delete{{ else }}删除{{ end }}</button>
+      <button id="gm-save" type="button" class="flex-1 h-12 rounded-full bg-m-primary text-m-on-primary text-[15px] font-bold">{{ if $isEn }}Save{{ else }}保存{{ end }}</button>
+    </div>
+  </div>
+</div>
 
 {{/* ===== 收藏（主人，右下角浮动按钮） ===== */}}
 <button id="cu-fab" type="button" class="cu-fab hidden">
@@ -155,4 +287,6 @@
 
 {{ define "pagejs" }}
 <script src="{{ (resources.Get "js/curio.js" | minify | fingerprint).RelPermalink }}"></script>
+<script src="{{ (resources.Get "js/curio-items.js" | minify | fingerprint).RelPermalink }}"></script>
+<script src="{{ (resources.Get "js/curio-tabs.js" | minify | fingerprint).RelPermalink }}"></script>
 {{ end }}

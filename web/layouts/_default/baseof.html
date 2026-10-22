@@ -44,22 +44,33 @@ __applyLayout();
 </head>
 <body class="text-m-on-surface font-sans antialiased">
 <div id="sgx-wallpaper" aria-hidden="true"></div>
-{{/* 顶栏（沉浸式 app，同日刻 / 博客）：左圆九宫格（导航抽屉）· 中间长条 = 搜索框 · 右圆头像。
-   首页：长条里是搜索框（curio.js 按名字 / 简介 / 网址即时筛选，不发请求）；其他页（404）：长条是回首页的链接。
+{{/* 顶栏（沉浸式 app，同日刻 / 博客，2026-10-22 定）：左圆九宫格（导航抽屉）· 中间长条 = 分段滑块 · 右圆头像。没有搜索栏。
+   长条里三个页签：发现 · 设备 · 游戏（Finds / Devices / Games，强调色滑块）。
+   首页：页签是 role=tab 的按钮，curio-tabs.js 切换面板（hash：发现 = 无或 #c/<分类>，#devices，#games）。
+   其他页（404）：页签是回首页对应页签的链接，不高亮。
    头像只展示，不可点击。外观和语言跟主站（sgx-ui cookie，见 ui-inherit-run.js）。 */}}
 {{ $home := cond $isEn "/en/" "/" }}
+{{ $tabs := slice
+  (dict "id" "finds" "zh" "发现" "en" "Finds" "hash" "")
+  (dict "id" "devices" "zh" "设备" "en" "Devices" "hash" "#devices")
+  (dict "id" "games" "zh" "游戏" "en" "Games" "hash" "#games")
+}}
 <header id="site-nav">
   <div class="sgx-topbar">
     <button type="button" class="sgx-tb-nav" aria-label="{{ if $isEn }}Navigation{{ else }}导航{{ end }}" aria-haspopup="dialog" aria-controls="sgx-drawer" aria-expanded="false">{{ index (resources.Get "sgx-shell/nav.json" | transform.Unmarshal).icons "apps-grid" | safeHTML }}</button>
     <div class="sgx-tb-pill">
       {{ if .IsHome }}
-      <label class="cu-search" role="search">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
-        <input id="cu-q" type="search" enterkeyhint="search" autocomplete="off" spellcheck="false" aria-label="{{ if $isEn }}Search Curio{{ else }}搜索奇趣{{ end }}" placeholder="{{ if $isEn }}Search Curio{{ else }}搜索奇趣{{ end }}">
-        <button id="cu-q-clear" type="button" class="cu-search-x hidden" aria-label="{{ if $isEn }}Clear{{ else }}清除{{ end }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-      </label>
+      <div class="sgx-seg" role="tablist" aria-label="{{ if $isEn }}Curio sections{{ else }}奇趣分区{{ end }}" data-cu-seg style="--seg-pos:0">
+        <span class="sgx-seg-ind" aria-hidden="true"></span>
+        {{ range $i, $t := $tabs }}
+        <button type="button" role="tab" class="sgx-seg-btn" id="cu-tab-{{ $t.id }}" aria-controls="cu-pane-{{ $t.id }}" aria-selected="{{ if eq $i 0 }}true{{ else }}false{{ end }}" tabindex="{{ if eq $i 0 }}0{{ else }}-1{{ end }}" data-cu-tab="{{ $t.id }}">{{ cond $isEn $t.en $t.zh }}</button>
+        {{ end }}
+      </div>
       {{ else }}
-      <a class="cu-search cu-search--link" href="{{ $home }}">{{ if $isEn }}Back to Curio{{ else }}回到奇趣{{ end }}</a>
+      <nav class="sgx-seg sgx-seg--none" aria-label="{{ if $isEn }}Curio sections{{ else }}奇趣分区{{ end }}">
+        <span class="sgx-seg-ind" aria-hidden="true"></span>
+        {{ range $tabs }}<a class="sgx-seg-btn" href="{{ $home }}{{ .hash }}">{{ cond $isEn .en .zh }}</a>{{ end }}
+      </nav>
       {{ end }}
     </div>
     <span class="sgx-tb-me" aria-hidden="true"><img src="https://styrigx.com/avatar/192.webp" alt="" width="52" height="52" class="sgx-tb-avatar"></span>
