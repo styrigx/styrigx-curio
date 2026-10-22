@@ -12,16 +12,43 @@ const read = (p) => readFileSync(path.join(REPO, p), 'utf8');
 const base = read('web/layouts/_default/baseof.html');
 const index = read('web/layouts/index.html');
 
-test('顶栏：九宫格 · 分段滑块 发现 / 设备 / 游戏（首页是页签按钮，其他页是链接）· 头像只展示；没有搜索栏和快捷面板', () => {
+test('顶栏：九宫格 · 长条（首页 = 分段滑块 发现 / 设备 / 游戏；其他页只有页名）· 右圆留言板；没有搜索栏、快捷面板、头像', () => {
   assert.match(base, /class="sgx-tb-nav"/);
   assert.match(base, /<div class="sgx-seg" role="tablist"[^>]*data-cu-seg/);
-  assert.match(base, /<nav class="sgx-seg sgx-seg--none"/);
+  assert.match(base, /\{\{ else \}\}\s*<span class="sgx-tb-title">\{\{ \$pageName \}\}<\/span>/);
+  assert.doesNotMatch(base, /sgx-seg--none/);
   for (const [id, zh, en, hash] of [['finds', '发现', 'Finds', ''], ['devices', '设备', 'Devices', '#devices'], ['games', '游戏', 'Games', '#games']]) {
     assert.match(base, new RegExp('\\(dict "id" "' + id + '" "zh" "' + zh + '" "en" "' + en + '" "hash" "' + hash + '"\\)'), id);
   }
   assert.match(base, /data-cu-tab="\{\{ \$t\.id \}\}"/);
-  assert.match(base, /<span class="sgx-tb-me" aria-hidden="true">/);
-  assert.doesNotMatch(base, /cu-search|id="cu-q"|sgx-tb-quick|sgx-qp|<a class="sgx-tb-me"/);
+  /* 右圆 = 留言板（三个子站同一个 pen-line 图标），链本站 /guestbook/、英文 /en/guestbook/ */
+  assert.match(base, /\$gb := cond \$isEn "\/en\/guestbook\/" "\/guestbook\/"/);
+  assert.match(base, /<a class="sgx-tb-end sgx-tb-guestbook" href="\{\{ \$gb \}\}"[^>]*>\{\{ partial "icon\.html" "pen-line" \}\}<\/a>/);
+  assert.doesNotMatch(base, /cu-search|id="cu-q"|sgx-tb-quick|sgx-qp|sgx-tb-me|sgx-tb-avatar/);
+});
+
+test('没有版权页脚（© / Powered by），样式也删干净', () => {
+  const css = read('web/assets/css/input.css');
+  assert.doesNotMatch(base, /<footer|©|Powered by/);
+  assert.doesNotMatch(css.slice(css.indexOf('/* @sgx-shell:end */')), /(^|[\s,}])footer\b|sgx-powered|sgx-tb-me/);
+});
+
+test('留言板：/guestbook/ + /en/guestbook/，共用 Giscus 讨论串（styrigx/styrigx · Announcements · specific term=guestbook）', () => {
+  const gb = read('web/layouts/_default/guestbook.html');
+  const cfg = read('web/hugo.yaml');
+  assert.match(read('web/content/guestbook.md'), /title: 留言板\nlayout: guestbook\nurl: \/guestbook\//);
+  assert.match(read('web/content/en/guestbook.md'), /title: Guestbook\nlayout: guestbook\nurl: \/en\/guestbook\//);
+  for (const [k, v] of [['repo', 'styrigx/styrigx'], ['repoId', 'R_kgDOVDhNiA'], ['category', 'Announcements'], ['categoryId', 'DIC_kwDOVDhNiM4DJVrs'],
+    ['mapping', 'specific'], ['term', 'guestbook'], ['strict', '0'], ['reactionsEnabled', '1'], ['inputPosition', 'top']]) {
+    assert.match(cfg, new RegExp('\\n      ' + k + ": '" + v.replace('/', '\\/') + "'"), k);
+  }
+  assert.match(gb, /data-giscus /);
+  assert.match(gb, /data-term="\{\{ \$g\.term \}\}"/);
+  assert.match(gb, /data-lang="\{\{ cond \$isEn "en" "zh-CN" \}\}"/);
+  assert.match(gb, /js\/guestbook\.js/);
+  const js = read('web/assets/js/guestbook.js');
+  assert.match(js, /https:\/\/giscus\.app\/client\.js/);
+  assert.match(js, /setConfig: \{ theme: t \}/);
 });
 
 test('抽屉：主站共享外壳的 nav.json，模板不写死项；奇趣是当前项；结构同主站', () => {

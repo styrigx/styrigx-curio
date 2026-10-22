@@ -1,5 +1,6 @@
 // 奇趣首页（手机）：接口用 page.route 假数据，不碰线上。
-// - 顶栏：九宫格 · 分段滑块 发现 / 设备 / 游戏 · 头像（没有搜索栏）；抽屉同主站（字标 + 头像、分隔线、底栏搜索框），奇趣是当前项
+// - 顶栏：九宫格 · 分段滑块 发现 / 设备 / 游戏 · 留言板圆（没有搜索栏、没有页脚）；抽屉同主站（字标 + 头像、主站 / 奇趣（书签+星）/ 日刻 / 博客、分隔线、底栏搜索框），奇趣是当前项
+// - 留言板 /guestbook/：长条只有页名，卡片里是共用的 Giscus 讨论串（giscus.app 用 page.route 拦掉）
 // - 访客：没有「收藏」和「⋯」；格子点开新标签页；图标取不到显示首字母
 // - 分类条筛选 + hash；页签切换 + hash + 左右滑
 // - 设备 / 游戏：访客只读；主人新建（照片缩图后上传）、详情、编辑、删除；使用天数
@@ -94,8 +95,17 @@ test('访客：顶栏分段滑块（没有搜索栏）、抽屉同主站；没�
   await expect(gh.locator('img')).toHaveCount(1);
   await expect(page.locator('.cu-tile[data-id="21"] img')).toHaveCount(0);
   await expect(page.locator('.cu-tile[data-id="21"] .cu-ic-letter')).toHaveText('I');
+  /* 右圆 = 留言板（本站 /guestbook/）；没有顶栏头像、没有版权页脚 */
+  await expect(page.locator('.sgx-topbar > *')).toHaveCount(3);
+  await expect(page.locator('.sgx-topbar .sgx-tb-end')).toHaveAttribute('href', '/guestbook/');
+  await expect(page.locator('.sgx-topbar .sgx-tb-end')).toHaveAttribute('aria-label', '留言板');
+  await expect(page.locator('.sgx-tb-me, footer')).toHaveCount(0);
+  await expect(page.getByText('Powered by')).toHaveCount(0);
   await page.locator('.sgx-tb-nav').click();
   await expect(page.locator('#sgx-drawer .sgx-drawer-item')).toHaveText(['主站', '奇趣', '日刻', '博客']);
+  await expect(page.locator('#sgx-drawer [data-nav="home"]')).toHaveAttribute('href', 'https://styrigx.com/');
+  /* 奇趣图标 = 书签 + 星（同主站 #180） */
+  await expect(page.locator('#sgx-drawer [data-nav="curio"] path').first()).toHaveAttribute('d', /^M6 4\.5A1\.5/);
   await expect(page.locator('#sgx-drawer [data-nav="curio"]')).toHaveAttribute('aria-current', 'page');
   /* 同主站：头部头像去主站账号页，导航项下一条分隔线，底栏搜索框原地开搜索层（href 只是没 JS 时的退路） */
   await expect(page.locator('#sgx-drawer .sgx-drawer-me')).toHaveAttribute('href', 'https://styrigx.com/settings/account/');
@@ -367,4 +377,35 @@ test('主人：添加游戏（状态、评分、平台联想、关联设备）',
   const card = page.locator('#gm-list .it-card').last();
   await expect(card.locator('.it-sub')).toHaveText('Android · Galaxy S25 Ultra');
   await expect(card.locator('.it-status')).toHaveText('在玩');
+});
+
+test('留言板：右圆进 /guestbook/，长条只有页名，卡片里插入共用 Giscus（specific term=guestbook、输入框在上、跟浅色）；英文页 lang=en', async ({ page }) => {
+  await mock(page, false);
+  const giscus = [];
+  await page.route('https://giscus.app/**', (r) => { giscus.push(r.request().url()); return r.fulfill({ status: 200, contentType: 'text/javascript', body: '' }); });
+  await page.goto('/');
+  await page.locator('.sgx-topbar .sgx-tb-end').click();
+  await expect(page).toHaveURL(/\/guestbook\/$/);
+  await expect(page.locator('.sgx-tb-pill .sgx-tb-title')).toHaveText('留言板');
+  await expect(page.locator('.sgx-tb-pill .sgx-seg')).toHaveCount(0);
+  await expect(page.locator('.sgx-topbar .sgx-tb-end')).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('.cu-gb-card')).toBeVisible();
+  const s = page.locator('[data-giscus] script[src="https://giscus.app/client.js"]');
+  await expect(s).toHaveCount(1);
+  for (const [k, v] of [['data-repo', 'styrigx/styrigx'], ['data-repo-id', 'R_kgDOVDhNiA'], ['data-category', 'Announcements'], ['data-category-id', 'DIC_kwDOVDhNiM4DJVrs'],
+    ['data-mapping', 'specific'], ['data-term', 'guestbook'], ['data-strict', '0'], ['data-reactions-enabled', '1'], ['data-input-position', 'top'], ['data-lang', 'zh-CN'], ['data-theme', 'light']]) {
+    await expect(s, k).toHaveAttribute(k, v);
+  }
+  expect(giscus.length).toBeGreaterThan(0);
+  await expect(page.locator('footer')).toHaveCount(0);
+  /* 卡片不超出屏幕 */
+  const box = await page.locator('.cu-gb-card').boundingBox();
+  const vw = page.viewportSize().width;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(vw);
+  await page.goto('/en/guestbook/');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(page.locator('.sgx-tb-pill .sgx-tb-title')).toHaveText('Guestbook');
+  await expect(page.locator('.sgx-topbar .sgx-tb-end')).toHaveAttribute('href', '/en/guestbook/');
+  await expect(page.locator('[data-giscus] script')).toHaveAttribute('data-lang', 'en');
 });
