@@ -97,10 +97,43 @@ test('访客：顶栏分段滑块（没有搜索栏）、抽屉同主站；没�
   await page.locator('.sgx-tb-nav').click();
   await expect(page.locator('#sgx-drawer .sgx-drawer-item')).toHaveText(['首页', '奇趣', '日刻', '博客']);
   await expect(page.locator('#sgx-drawer [data-nav="curio"]')).toHaveAttribute('aria-current', 'page');
-  /* 同主站：头部头像去主站账号页，导航项下一条分隔线，底栏搜索框去主站搜索 */
+  /* 同主站：头部头像去主站账号页，导航项下一条分隔线，底栏搜索框原地开搜索层（href 只是没 JS 时的退路） */
   await expect(page.locator('#sgx-drawer .sgx-drawer-me')).toHaveAttribute('href', 'https://styrigx.com/settings/account/');
   await expect(page.locator('#sgx-drawer hr.sgx-drawer-sep')).toHaveCount(1);
   await expect(page.locator('#sgx-drawer .sgx-drawer-search')).toHaveAttribute('href', 'https://styrigx.com/search/');
+});
+
+test('抽屉底栏搜索：原地打开搜索层（不跳站、不刷新），底栏带星图标、自动聚焦，结果走本站 /api/search；返回只关搜索层', async ({ page }) => {
+  await mock(page, false);
+  const asked = [];
+  await page.route('**/api/search**', (r) => {
+    asked.push(new URL(r.request().url()).host);
+    return r.fulfill({ json: { hits: [{ title: 'GitHub', subtitle: '开发与云', url: '/#c/1', type: 'item' }] } });
+  });
+  await page.goto('/');
+  const origin = new URL(page.url()).origin;
+  await page.evaluate(() => { window.__noReload = 1; });
+  const histLen = await page.evaluate(() => history.length);
+  await page.locator('.sgx-tb-nav').click();
+  await page.locator('#sgx-drawer .sgx-drawer-search').click();
+  await expect(page.locator('.sgx-srch-bar')).toBeVisible();
+  await expect(page.locator('#sgx-srch-input')).toBeFocused();
+  await expect(page.locator('#sgx-drawer')).not.toHaveAttribute('open', '');
+  expect(new URL(page.url()).origin).toBe(origin);
+  expect(await page.evaluate(() => window.__noReload)).toBe(1);
+  /* 底栏和空白页的放大镜 = 抽屉同款带星图标 */
+  await expect(page.locator('.sgx-srch-bar .sgx-srch-ic path').first()).toHaveAttribute('d', /^M14\.9 9\.6/);
+  await expect(page.locator('.sgx-srch-empty .sgx-srch-empty-ic path').first()).toHaveAttribute('d', /^M14\.9 9\.6/);
+  await page.locator('#sgx-srch-input').fill('git');
+  await expect(page.locator('#sgx-srch-list [data-srch-u]').first()).toContainText('GitHub');
+  expect(asked.length).toBeGreaterThan(0);
+  expect(asked.every((h) => h === new URL(origin).host)).toBe(true);
+  /* 抽屉的历史哨兵让给搜索层：只多一条；系统返回只关搜索层，停在本页 */
+  expect(await page.evaluate(() => history.length)).toBe(histLen + 1);
+  await page.goBack();
+  await expect(page.locator('.sgx-srch-bar')).toBeHidden();
+  expect(new URL(page.url()).origin).toBe(origin);
+  expect(await page.evaluate(() => window.__noReload)).toBe(1);
 });
 
 test('分类条筛选并写 hash，刷新还在', async ({ page }) => {
