@@ -95,7 +95,7 @@ test('访客：顶栏分段滑块（没有搜索栏）、抽屉同主站；没�
   await expect(page.locator('.cu-tile[data-id="21"] img')).toHaveCount(0);
   await expect(page.locator('.cu-tile[data-id="21"] .cu-ic-letter')).toHaveText('I');
   await page.locator('.sgx-tb-nav').click();
-  await expect(page.locator('#sgx-drawer .sgx-drawer-item')).toHaveText(['首页', '奇趣', '日刻', '博客']);
+  await expect(page.locator('#sgx-drawer .sgx-drawer-item')).toHaveText(['主站', '奇趣', '日刻', '博客']);
   await expect(page.locator('#sgx-drawer [data-nav="curio"]')).toHaveAttribute('aria-current', 'page');
   /* 同主站：头部头像去主站账号页，导航项下一条分隔线，底栏搜索框原地开搜索层（href 只是没 JS 时的退路） */
   await expect(page.locator('#sgx-drawer .sgx-drawer-me')).toHaveAttribute('href', 'https://styrigx.com/settings/account/');
