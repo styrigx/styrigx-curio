@@ -9,9 +9,12 @@
  *   2. 按路由表交给 src/api/<路径>.js；写操作自己再要求 owner + 同源
  * /api/session-check 由网关的更精确路由直接回答，到不了这里；万一到了，同样问网关。
  * 不在路由表里的路径 → 404；方法不支持 → 405。
+ *
+ * 全站搜索：改内容的写接口成功后 ctx.waitUntil 重建 KV site:curio；Cron 每小时兜底（scheduled），见 src/search-index.js。
  */
 import { API_ROUTES } from './routes.js';
 import { verifySession } from './api/_auth.js';
+import { rebuildSearchIndex, isContentMutation } from './search-index.js';
 
 const METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
 const NO_STORE = 'private, no-store';
@@ -90,7 +93,11 @@ export async function handle(request, env, ctx) {
   if (!hit) return json(404, { ok: false, error: 'not-found' });
   const handler = pickHandler(hit.mod, request.method);
   if (!handler) return json(405, { ok: false, error: 'method' });
-  return handler(makeContext(request, env, ctx, hit.params, hit.functionPath));
+  const res = await handler(makeContext(request, env, ctx, hit.params, hit.functionPath));
+  if (res && isContentMutation(hit.functionPath, request.method, res.status) && ctx && typeof ctx.waitUntil === 'function') {
+    ctx.waitUntil(rebuildSearchIndex(env));
+  }
+  return res;
 }
 
 export default {
@@ -106,5 +113,17 @@ export default {
       console.error('[curio-core] unhandled: ' + (e && e.name ? e.name : 'error'));
       return tag(json(500, { ok: false, error: 'internal' }));
     }
+  },
+
+  /**
+   * Cron（wrangler.toml [triggers]）：每小时兜底重建全站搜索索引。出错只打日志（rebuildSearchIndex 不抛）。
+   * @param {any} controller
+   * @param {Record<string, any>} env
+   * @param {{ waitUntil(p: Promise<any>): void }} ctx
+   */
+  async scheduled(controller, env, ctx) {
+    const p = rebuildSearchIndex(env);
+    if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(p);
+    await p;
   },
 };

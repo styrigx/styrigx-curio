@@ -5,6 +5,7 @@
 #
 # 安全：
 # - 本 Worker 不持任何钥匙。会话交给鉴权网关验（服务绑定 AUTH → SessionVerifier）。
+# - 全站搜索：本 Worker 自己把收藏 / 设备 / 游戏写进 KV styrigx-search-index 的 site:curio（src/search-index.js）。
 # - workers_dev = false、preview_urls = false：只通过 curio.styrigx.com 的路由访问（它连的是正式 D1 / R2）。
 
 name = "styrigx-curio-core"
@@ -39,3 +40,13 @@ bucket_name = "styrigx-curio"
 binding = "AUTH"
 service = "styrigx-auth-gateway"
 entrypoint = "SessionVerifier"
+
+# 全站搜索索引：KV styrigx-search-index（主站 styrigx-search-index Worker 读）。本 Worker 只写自己那条 site:curio：
+# 改内容的写接口成功后重建（ctx.waitUntil），下面的 Cron 每小时兜底一次。格式见 src/search-index.js。
+[[kv_namespaces]]
+binding = "SEARCH_KV"
+id = "bd1babcc3fe74d58994e254c74d34ced"
+
+# Cron：每小时第 23 分重建一次搜索索引（首次部署后也靠它填上）。
+[triggers]
+crons = ["23 * * * *"]
