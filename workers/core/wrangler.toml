@@ -30,7 +30,7 @@ database_name = "styrigx-curio"
 database_id = "8f0c8907-c87c-4cf4-b1ee-0cae384d25c2"
 migrations_dir = "migrations"
 
-# R2：icons/（网站小图标缓存）、imports/（每次导入的浏览器书签原文，备份，不自动删）
+# R2：icons/（网站小图标缓存）、imports/（每次导入的浏览器书签原文，备份，不自动删）、photos/（设备照片 / 游戏封面；每天清扫没人引用的）
 [[r2_buckets]]
 binding = "FILES"
 bucket_name = "styrigx-curio"
@@ -47,6 +47,6 @@ entrypoint = "SessionVerifier"
 binding = "SEARCH_KV"
 id = "bd1babcc3fe74d58994e254c74d34ced"
 
-# Cron：每小时第 23 分重建一次搜索索引（首次部署后也靠它填上）。
+# Cron：每小时第 23 分重建一次搜索索引（首次部署后也靠它填上）；UTC 19:23（北京 03:23）那轮顺带清扫 R2 photos/ 里没人引用的照片。
 [triggers]
 crons = ["23 * * * *"]
