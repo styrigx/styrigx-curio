@@ -108,7 +108,7 @@ test('访客：顶栏分段滑块（没有搜索栏）、抽屉同主站；没�
   await expect(page.locator('#sgx-drawer [data-nav="curio"] path').first()).toHaveAttribute('d', /^M6 4\.5A1\.5/);
   await expect(page.locator('#sgx-drawer [data-nav="curio"]')).toHaveAttribute('aria-current', 'page');
   /* 同主站：头部头像去主站账号页，导航项下一条分隔线，底栏搜索框原地开搜索层（href 只是没 JS 时的退路） */
-  await expect(page.locator('#sgx-drawer .sgx-drawer-me')).toHaveAttribute('href', 'https://styrigx.com/settings/account/');
+  await expect(page.locator('#sgx-drawer .sgx-drawer-me')).toHaveAttribute('href', 'https://styrigx.com/account/');
   await expect(page.locator('#sgx-drawer hr.sgx-drawer-sep')).toHaveCount(1);
   await expect(page.locator('#sgx-drawer .sgx-drawer-search')).toHaveAttribute('href', 'https://styrigx.com/search/');
 });
