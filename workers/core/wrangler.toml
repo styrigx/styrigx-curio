@@ -26,14 +26,14 @@ zone_name = "styrigx.com"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "styrigx-curio"
-database_id = "8f0c8907-c87c-4cf4-b1ee-0cae384d25c2"
+database_name = "styrigx-curio-core"
+database_id = "26ae9cd2-43c9-4bc0-b558-b35560ed9d7c"
 migrations_dir = "migrations"
 
 # R2：icons/（网站小图标缓存）、imports/（每次导入的浏览器书签原文，备份，不自动删）、photos/（设备照片 / 游戏封面；每天清扫没人引用的）
 [[r2_buckets]]
 binding = "FILES"
-bucket_name = "styrigx-curio"
+bucket_name = "styrigx-curio-core"
 
 # 验票：主站鉴权网关的 RPC 入口（session）。
 [[services]]

@@ -475,7 +475,7 @@ test('wrangler.toml：不开 workers.dev，只挂 curio 的 /api/*，D1 + R2 + �
   assert.match(t, /^preview_urls = false$/m);
   assert.match(t, /^pattern = "curio\.styrigx\.com\/api\/\*"$/m);
   assert.match(t, /^database_id = "[0-9a-f-]{36}"$/m);
-  assert.match(t, /^bucket_name = "styrigx-curio"$/m);
+  assert.match(t, /^bucket_name = "styrigx-curio-core"$/m);
   assert.match(t, /^service = "styrigx-auth-gateway"$/m);
   assert.doesNotMatch(t, /SGX_|\[vars\]/);
 });
