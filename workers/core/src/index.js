@@ -15,6 +15,7 @@
 import { API_ROUTES } from './routes.js';
 import { verifySession } from './api/_auth.js';
 import { rebuildSearchIndex, isContentMutation } from './search-index.js';
+import { sweepPhotos, isSweepHour } from './photo-sweep.js';
 
 const METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
 const NO_STORE = 'private, no-store';
@@ -116,13 +117,16 @@ export default {
   },
 
   /**
-   * Cron（wrangler.toml [triggers]）：每小时兜底重建全站搜索索引。出错只打日志（rebuildSearchIndex 不抛）。
+   * Cron（wrangler.toml [triggers]）：每小时兜底重建全站搜索索引；每天一次（UTC 19 点那轮）顺带清扫没人引用的照片（src/photo-sweep.js）。出错只打日志。
    * @param {any} controller
    * @param {Record<string, any>} env
    * @param {{ waitUntil(p: Promise<any>): void }} ctx
    */
   async scheduled(controller, env, ctx) {
-    const p = rebuildSearchIndex(env);
+    const at = controller && controller.scheduledTime ? Number(controller.scheduledTime) : Date.now();
+    const jobs = [rebuildSearchIndex(env)];
+    if (isSweepHour(at)) jobs.push(sweepPhotos(env, at).catch(() => {}));
+    const p = Promise.all(jobs);
     if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(p);
     await p;
   },
