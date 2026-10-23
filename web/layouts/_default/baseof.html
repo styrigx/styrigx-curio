@@ -19,7 +19,6 @@
 <style>
 @font-face{font-family:'Inter';font-style:normal;font-weight:400 800;font-display:optional;src:url('/fonts/inter-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
 @font-face{font-family:'Inter Fallback';src:local('Arial');size-adjust:107%;ascent-override:90%;descent-override:23%;line-gap-override:0%;}
-:root{--nav-h:68px}/* 顶栏卡片底边位置：16 + 52 */
 </style>
 {{/* 外观 + 语言预读（渲染前）——继承主站 sgx-ui cookie 的深浅色、调色板、强调色、字体大小、减弱动效和语言；
      没有 cookie 时跟系统（奇趣没有自己的开关） */}}
@@ -45,7 +44,7 @@ __applyLayout();
 <body class="text-m-on-surface font-sans antialiased">
 <div id="sgx-wallpaper" aria-hidden="true"></div>
 {{/* 顶栏（沉浸式 app，三个子站同主站 v8 一套，2026-10-22 定）：左圆九宫格（导航抽屉）· 中间长条 · 右圆 留言板。
-   长条：首页 = 分段滑块 发现 · 设备 · 游戏（Finds / Devices / Games，强调色滑块；同主站首页长条里放三个标签）；
+   长条：首页 = 分段滑块 发现 · 设备 · 游戏（Finds / Devices / Games，当前项同主站顶栏三栏的 tonal 药丸；同主站首页长条里放三个标签）；
    其他页（留言板、404）= 只有页名（.sgx-tb-title，居中、太长省略号），不放图标。
    首页：页签是 role=tab 的按钮，curio-tabs.js 切换面板（hash：发现 = 无或 #c/<分类>，#devices，#games）。
    右圆 .sgx-tb-end（共享外壳样式，52px 圆 + 22px 图标）= 留言板入口：链到本站 /guestbook/（英文 /en/guestbook/），三个子站同一个图标、同一个 Giscus 讨论串。

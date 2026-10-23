@@ -26,14 +26,12 @@ test('pick：当前语言为空就用另一种', () => {
   assert.equal(C.pick(null, false), '');
 });
 
-test('hostOf / initial / hue：去 www、首字大写、同域名同颜色', () => {
+test('hostOf / initial：去 www、首字大写', () => {
   assert.equal(C.hostOf('https://www.example.com/a'), 'example.com');
   assert.equal(C.initial('github', 'https://github.com'), 'G');
   assert.equal(C.initial('', 'https://www.mdn.dev'), 'M');
   assert.equal(C.initial('奇趣', ''), '奇');
   assert.equal(C.initial('😀 smile', ''), '😀');
-  assert.equal(C.hue('https://a.com/x'), C.hue('https://a.com/y'));
-  assert.ok(C.hue('https://a.com') >= 0 && C.hue('https://a.com') < 360);
 });
 
 test('hash：#c/<id> ↔ 分类，其余当全部', () => {

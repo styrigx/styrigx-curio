@@ -35,13 +35,6 @@ function initial(name, url){
   return ch.toUpperCase();
 }
 
-/** 首字母方块的色相（同一个域名永远同一个颜色） */
-function hue(url){
-  var s = hostOf(url), h = 0;
-  for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return h % 360;
-}
-
 /** hash → 选中的分类 id（0 = 全部） */
 function parseHash(hash){
   var m = /^#c\/(\d+)$/.exec(String(hash || ''));
@@ -99,7 +92,7 @@ function importSummary(r, en){
   return '新增 ' + r.added + ' 条' + (r.cats_added ? '、' + r.cats_added + ' 个分类' : '') + (r.skipped ? '，' + r.skipped + ' 条已经有了' : '') + '。';
 }
 
-var pure = { pick: pick, hostOf: hostOf, initial: initial, hue: hue, parseHash: parseHash, catHash: catHash, filterCats: filterCats, countLinks: countLinks, moveId: moveId, normalizeUrl: normalizeUrl, importSummary: importSummary };
+var pure = { pick: pick, hostOf: hostOf, initial: initial, parseHash: parseHash, catHash: catHash, filterCats: filterCats, countLinks: countLinks, moveId: moveId, normalizeUrl: normalizeUrl, importSummary: importSummary };
 if (typeof module !== 'undefined' && module.exports) { module.exports = pure; return; }
 G.SgxCurio = pure;
 
@@ -222,7 +215,7 @@ function tileHTML(l, c){
   var desc = pick(l.desc, isEn) || hostOf(l.url);
   var locked = owner && (l.private || c.private);
   return '<a class="cu-tile" href="' + esc(l.url) + '" target="_blank" rel="noopener noreferrer" data-id="' + l.id + '" title="' + esc(desc + ' · ' + l.url) + '">'
-    + '<span class="cu-ic" style="--cu-h:' + hue(l.url) + '"><span class="cu-ic-letter" aria-hidden="true">' + esc(initial(name, l.url)) + '</span>'
+    + '<span class="cu-ic"><span class="cu-ic-letter" aria-hidden="true">' + esc(initial(name, l.url)) + '</span>'
     + '<img src="/api/icon?id=' + l.id + '" alt="" width="48" height="48" loading="lazy" decoding="async" onerror="this.remove()"></span>'
     + '<span class="cu-name">' + esc(name) + '</span>'
     + (locked ? '<span class="cu-lock" role="img" aria-label="' + esc(T.priv) + '" title="' + esc(T.priv) + '">' + LOCK + '</span>' : '')
