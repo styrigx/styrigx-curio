@@ -17,20 +17,22 @@ export function isSweepHour(at) {
 }
 
 /**
- * @param {Record<string, any>} env  DB + FILES
+ * @param {Record<string, any>} env  D1_DEVICES + R2_PHOTOS
  * @param {number} now
  * @returns {Promise<{ok:boolean, scanned:number, deleted:number, reason?:string}>}
  */
 export async function sweepPhotos(env, now = Date.now()) {
-  if (!env || !env.DB || !env.FILES) return { ok: false, scanned: 0, deleted: 0, reason: 'unbound' };
+  if (!env || !env.D1_DEVICES || !env.R2_PHOTOS) return { ok: false, scanned: 0, deleted: 0, reason: 'unbound' };
   /** @type {Set<string>} */
   const used = new Set();
   try {
-    await ensureItemSchema(env.DB);
+    /* 一条 UNION ALL 同时读 devices.photo 和 games.cover（跨两套数据，要同一快照才不会误删）：
+       用主表 devices 那套的绑定 D1_DEVICES 执行（与 D1_GAMES 是同一个库） */
+    await ensureItemSchema(env.D1_DEVICES);
     const sql = Object.values(KINDS)
       .map((K) => `SELECT ${K.photo} AS k FROM ${K.table} WHERE ${K.photo} <> ''`)
       .join(' UNION ALL ');
-    const r = await env.DB.prepare(sql).all();
+    const r = await env.D1_DEVICES.prepare(sql).all();
     for (const row of (r && r.results) || []) if (row.k) used.add(String(row.k));
   } catch (e) {
     console.error('[curio-sweep] db read failed, skip');
@@ -42,7 +44,7 @@ export async function sweepPhotos(env, now = Date.now()) {
   let cursor;
   try {
     do {
-      const page = await env.FILES.list({ prefix: SWEEP_PREFIX, cursor, limit: 1000 });
+      const page = await env.R2_PHOTOS.list({ prefix: SWEEP_PREFIX, cursor, limit: 1000 });
       for (const o of page.objects || []) {
         scanned++;
         const up = o.uploaded instanceof Date ? o.uploaded.getTime() : Number(new Date(o.uploaded));
@@ -57,7 +59,7 @@ export async function sweepPhotos(env, now = Date.now()) {
   let deleted = 0;
   for (let i = 0; i < stale.length; i += 1000) {
     const chunk = stale.slice(i, i + 1000);
-    try { await env.FILES.delete(chunk); deleted += chunk.length; } catch (e) { console.error('[curio-sweep] delete failed'); }
+    try { await env.R2_PHOTOS.delete(chunk); deleted += chunk.length; } catch (e) { console.error('[curio-sweep] delete failed'); }
   }
   if (deleted) console.log('[curio-sweep] deleted ' + deleted + ' orphan photo(s)');
   return { ok: true, scanned, deleted };

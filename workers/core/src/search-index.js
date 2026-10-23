@@ -119,7 +119,12 @@ export function gameItems(r) {
   return out;
 }
 
-/** 从 D1 读全部收藏、设备、游戏（页面上的顺序），拼成索引值 */
+/**
+ * 从 D1 读全部收藏、设备、游戏（页面上的顺序），拼成索引值。
+ * 一个 batch 跨 cats / links / devices / games 三套数据（同一快照），用主表 links 那套的绑定 D1_FINDS 执行
+ * （D1_FINDS / D1_DEVICES / D1_GAMES 是同一个库 styrigx-curio-core）。
+ * @param {any} db  D1_FINDS
+ */
 export async function buildIndex(db, now = Date.now()) {
   await ensureSchema(db);
   await ensureItemSchema(db);
@@ -143,16 +148,16 @@ export async function buildIndex(db, now = Date.now()) {
  */
 export async function rebuildSearchIndex(env, now = Date.now()) {
   try {
-    const kv = env && env.SEARCH_KV;
+    const kv = env && env.KV_SEARCH_INDEX;
     if (!kv || typeof kv.put !== 'function') {
-      console.error('[curio-search] SEARCH_KV binding missing');
+      console.error('[curio-search] KV_SEARCH_INDEX binding missing');
       return { ok: false, error: 'kv-binding-missing' };
     }
-    if (!env.DB) {
-      console.error('[curio-search] DB binding missing');
+    if (!env.D1_FINDS) {
+      console.error('[curio-search] D1_FINDS binding missing');
       return { ok: false, error: 'db-binding-missing' };
     }
-    const value = await buildIndex(env.DB, now);
+    const value = await buildIndex(env.D1_FINDS, now);
     let body = JSON.stringify(value);
     if (body.length > VALUE_MAX) {
       for (const it of value.items) delete it.text;

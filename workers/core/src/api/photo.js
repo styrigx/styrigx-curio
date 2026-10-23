@@ -1,5 +1,5 @@
 // workers/core/src/api/photo.js
-// 设备照片 / 游戏封面（R2 FILES：photos/<device|game>/<id>-<时间>.<webp|jpg|png>）。
+// 设备照片 / 游戏封面（R2 R2_PHOTOS：photos/<device|game>/<id>-<时间>.<webp|jpg|png>）。
 //   GET    /api/photo?kind=device|game&id=N   任何有效会话；访客拿不到私密条目的图（404，同不存在）。没照片 404。
 //   POST   /api/photo?kind=…&id=N             owner + 同源；body 是图片本身（Content-Type image/webp|jpeg|png，看头几个字节核对），≤ 3 MB。
 //                                             换照片：先写新的、再改 D1、最后删旧的。→ {ok:true}
@@ -9,7 +9,7 @@
 import { err, json, methodNotAllowed } from './_lib.js';
 import { verifySession } from './_auth.js';
 import { guardWrite, idParam } from './_write.js';
-import { ensureItemSchema, KINDS } from './_items.js';
+import { ensureItemSchema, KINDS, itemDb } from './_items.js';
 
 export const PHOTO_MAX_BYTES = 3 * 1024 * 1024;
 const CACHE = 'private, max-age=31536000, immutable';
@@ -37,11 +37,12 @@ export async function onRequestGet(context) {
   if (!role) return err('unauthorized', 401);
   const t = target(request);
   if (!t) return err('bad-id', 400);
-  if (!env.DB || !env.FILES) return err('server', 503);
-  await ensureItemSchema(env.DB);
-  const row = await env.DB.prepare(`SELECT ${t.K.photo} AS photo, private FROM ${t.K.table} WHERE id = ?1`).bind(t.id).first();
+  const db = itemDb(env, t.kind); // 设备 → D1_DEVICES，游戏 → D1_GAMES
+  if (!db || !env.R2_PHOTOS) return err('server', 503);
+  await ensureItemSchema(db);
+  const row = await db.prepare(`SELECT ${t.K.photo} AS photo, private FROM ${t.K.table} WHERE id = ?1`).bind(t.id).first();
   if (!row || !row.photo || (role !== 'owner' && row.private)) return err('not-found', 404);
-  const obj = await env.FILES.get(row.photo);
+  const obj = await env.R2_PHOTOS.get(row.photo);
   if (!obj) return err('not-found', 404);
   const type = (obj.httpMetadata && obj.httpMetadata.contentType) || 'image/webp';
   return new Response(obj.body, { status: 200, headers: { 'Content-Type': type, 'Cache-Control': CACHE, 'X-Content-Type-Options': 'nosniff' } });
@@ -53,24 +54,25 @@ export async function onRequestPost(context) {
   const { request, env } = context;
   const t = target(request);
   if (!t) return err('bad-id', 400);
-  if (!env.DB || !env.FILES) return err('server', 503);
+  const db = itemDb(env, t.kind); // 设备 → D1_DEVICES，游戏 → D1_GAMES
+  if (!db || !env.R2_PHOTOS) return err('server', 503);
   const len = Number(request.headers.get('Content-Length') || 0);
   if (len > PHOTO_MAX_BYTES) return err('too-large', 413);
   const bytes = new Uint8Array(await request.arrayBuffer());
   if (bytes.length > PHOTO_MAX_BYTES) return err('too-large', 413);
   const type = sniffImage(bytes);
   if (!type) return err('not-image', 400);
-  await ensureItemSchema(env.DB);
-  const row = await env.DB.prepare(`SELECT ${t.K.photo} AS photo FROM ${t.K.table} WHERE id = ?1`).bind(t.id).first();
+  await ensureItemSchema(db);
+  const row = await db.prepare(`SELECT ${t.K.photo} AS photo FROM ${t.K.table} WHERE id = ?1`).bind(t.id).first();
   if (!row) return err('not-found', 404);
   const key = `photos/${t.kind}/${t.id}-${Date.now()}.${EXT[type]}`;
   try {
-    await env.FILES.put(key, bytes, { httpMetadata: { contentType: type } });
+    await env.R2_PHOTOS.put(key, bytes, { httpMetadata: { contentType: type } });
   } catch (e) {
     return err('storage', 503);
   }
-  await env.DB.prepare(`UPDATE ${t.K.table} SET ${t.K.photo} = ?1, updated_at = ?2 WHERE id = ?3`).bind(key, Date.now(), t.id).run();
-  if (row.photo) { try { await env.FILES.delete(row.photo); } catch (e) { console.error('[curio-photo] old delete failed'); } }
+  await db.prepare(`UPDATE ${t.K.table} SET ${t.K.photo} = ?1, updated_at = ?2 WHERE id = ?3`).bind(key, Date.now(), t.id).run();
+  if (row.photo) { try { await env.R2_PHOTOS.delete(row.photo); } catch (e) { console.error('[curio-photo] old delete failed'); } }
   return json({ ok: true });
 }
 
@@ -80,12 +82,13 @@ export async function onRequestDelete(context) {
   const { request, env } = context;
   const t = target(request);
   if (!t) return err('bad-id', 400);
-  if (!env.DB || !env.FILES) return err('server', 503);
-  await ensureItemSchema(env.DB);
-  const row = await env.DB.prepare(`SELECT ${t.K.photo} AS photo FROM ${t.K.table} WHERE id = ?1`).bind(t.id).first();
+  const db = itemDb(env, t.kind); // 设备 → D1_DEVICES，游戏 → D1_GAMES
+  if (!db || !env.R2_PHOTOS) return err('server', 503);
+  await ensureItemSchema(db);
+  const row = await db.prepare(`SELECT ${t.K.photo} AS photo FROM ${t.K.table} WHERE id = ?1`).bind(t.id).first();
   if (!row) return err('not-found', 404);
-  await env.DB.prepare(`UPDATE ${t.K.table} SET ${t.K.photo} = '', updated_at = ?1 WHERE id = ?2`).bind(Date.now(), t.id).run();
-  if (row.photo) { try { await env.FILES.delete(row.photo); } catch (e) { console.error('[curio-photo] delete failed'); } }
+  await db.prepare(`UPDATE ${t.K.table} SET ${t.K.photo} = '', updated_at = ?1 WHERE id = ?2`).bind(Date.now(), t.id).run();
+  if (row.photo) { try { await env.R2_PHOTOS.delete(row.photo); } catch (e) { console.error('[curio-photo] delete failed'); } }
   return json({ ok: true });
 }
 

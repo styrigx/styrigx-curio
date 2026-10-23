@@ -7,7 +7,7 @@
 import { json, err, methodNotAllowed } from './_lib.js';
 import { verifySession } from './_auth.js';
 import { readBody, guardWrite } from './_write.js';
-import { ensureItemSchema, listItems, parseItemOp, applyItemOp } from './_items.js';
+import { ensureItemSchema, listItems, parseItemOp, applyItemOp, itemDb } from './_items.js';
 
 const STATUS = { 'not-found': 404, mismatch: 409, limit: 409 };
 
@@ -15,29 +15,32 @@ export async function onRequestGet(context) {
   const { request, env } = context;
   const role = await verifySession(request, env);
   if (!role) return err('unauthorized', 401);
-  if (!env || !env.DB) return err('server', 503);
+  /* 设备 + 游戏一起读是跨两套数据的一个 batch：用主表 devices 的绑定 D1_DEVICES（见 _items.js listItems） */
+  if (!env || !env.D1_DEVICES) return err('server', 503);
   const owner = role === 'owner';
-  await ensureItemSchema(env.DB);
-  return json({ ok: true, owner, ...(await listItems(env.DB, owner)) });
+  await ensureItemSchema(env.D1_DEVICES);
+  return json({ ok: true, owner, ...(await listItems(env.D1_DEVICES, owner)) });
 }
 
 export async function onRequestPost(context) {
   const denied = await guardWrite(context);
   if (denied) return denied;
   const { env } = context;
-  if (!env || !env.DB) return err('server', 503);
+  if (!env || !env.D1_DEVICES || !env.D1_GAMES) return err('server', 503);
   const { body, response } = await readBody(context.request);
   if (response) return response;
   const kind = body && typeof body.op === 'string' ? body.op.split('.')[0] : '';
   const o = parseItemOp(kind, body);
   if ('error' in o) return err(o.error, 400);
-  await ensureItemSchema(env.DB);
-  const r = await applyItemOp(env.DB, o);
+  /* 本表用自己的绑定（device → D1_DEVICES，game → D1_GAMES）；查关联设备、删设备的跨表 batch 用 D1_DEVICES */
+  const db = itemDb(env, o.kind);
+  await ensureItemSchema(db);
+  const r = await applyItemOp(db, o, Date.now(), env.D1_DEVICES);
   if (r.error) return err(r.error, STATUS[r.error] || 400);
   for (const key of r.removed) {
-    try { if (env.FILES) await env.FILES.delete(key); } catch (e) { console.error('[curio-items] photo delete failed'); }
+    try { if (env.R2_PHOTOS) await env.R2_PHOTOS.delete(key); } catch (e) { console.error('[curio-items] photo delete failed'); }
   }
-  const out = { ok: true, owner: true, ...(await listItems(env.DB, true)) };
+  const out = { ok: true, owner: true, ...(await listItems(env.D1_DEVICES, true)) };
   if (r.id) out.id = r.id;
   return json(out);
 }

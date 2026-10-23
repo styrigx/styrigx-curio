@@ -12,7 +12,7 @@ import { ensureSchema, listAll, parseOp, applyOp } from './_store.js';
 const STATUS = { 'not-found': 404, 'not-empty': 409, mismatch: 409, limit: 409, duplicate: 409 };
 
 function db(env) {
-  return env && env.DB ? env.DB : null;
+  return env && env.D1_FINDS ? env.D1_FINDS : null;
 }
 
 export async function onRequestGet(context) {

@@ -54,7 +54,7 @@ function call(p, { role = null, db, r2, method = 'GET', body, origin = ORIGIN, t
   if (origin) headers.Origin = origin;
   if (body !== undefined) headers['Content-Type'] = type || 'application/json';
   const b = body === undefined ? undefined : body instanceof Uint8Array || typeof body === 'string' ? body : JSON.stringify(body);
-  return worker.fetch(new Request(ORIGIN + p, { method, headers, body: b }), { AUTH: auth(role), DB: db, FILES: r2 }, { waitUntil() {} });
+  return worker.fetch(new Request(ORIGIN + p, { method, headers, body: b }), { AUTH: auth(role), D1_FINDS: db, D1_DEVICES: db, D1_GAMES: db, R2_PHOTOS: r2 }, { waitUntil() {} });
 }
 const env = () => ({ db: makeD1(), r2: makeR2() });
 const post = (e, body, role = 'owner') => call('/api/items', { ...e, role, method: 'POST', body });
@@ -179,4 +179,32 @@ test('迁移 0003 连跑两次不报错，和 ITEM_SCHEMA 建出来的表一样'
   for (const s of IT.ITEM_SCHEMA) b.exec(s);
   const cols = (db, t) => db.prepare(`PRAGMA table_info(${t})`).all().map((c) => [c.name, c.type, c.notnull, c.dflt_value]);
   for (const t of ['devices', 'games']) assert.deepEqual(cols(b, t), cols(a, t), t);
+});
+
+test('绑定：设备走 D1_DEVICES、游戏走 D1_GAMES（同一个库）；wrangler.toml 三个 D1 绑定同一个库、迁移只配一次', async () => {
+  const raw = new DatabaseSync(':memory:');
+  const seen = { D1_DEVICES: new Set(), D1_GAMES: new Set(), D1_FINDS: new Set() };
+  /* 同一个库包三层，记下每个绑定碰过哪些表 */
+  const tag = (name) => {
+    const d = makeD1(raw);
+    const note = (sql) => { for (const t of ['devices', 'games', 'links', 'cats']) if (new RegExp('\\b' + t + '\\b').test(sql)) seen[name].add(t); };
+    return { ...d, prepare: (sql) => { note(sql); return d.prepare(sql); } };
+  };
+  const envOf = (role) => ({ AUTH: auth(role), D1_FINDS: tag('D1_FINDS'), D1_DEVICES: tag('D1_DEVICES'), D1_GAMES: tag('D1_GAMES'), R2_PHOTOS: makeR2() });
+  const req = (p, method = 'GET', body) => new Request(ORIGIN + p, { method, headers: { Cookie: 'sgx-verified=x', Origin: ORIGIN, 'Content-Type': 'application/json' }, body: body && JSON.stringify(body) });
+  const E = envOf('owner');
+  assert.equal((await worker.fetch(req('/api/items', 'POST', { op: 'device.add', name: 'S24' }), E, { waitUntil() {} })).status, 200);
+  assert.equal((await worker.fetch(req('/api/items', 'POST', { op: 'game.add', title: 'Zelda' }), E, { waitUntil() {} })).status, 200);
+  seen.D1_GAMES.clear(); // 第一次调用时这个绑定跑过建表 batch（devices + games），之后不再跑
+  assert.equal((await worker.fetch(req('/api/items', 'POST', { op: 'game.add', title: 'Zelda 2', device_id: 1 }), E, { waitUntil() {} })).status, 200);
+  assert.equal((await worker.fetch(req('/api/items', 'POST', { op: 'game.edit', id: 2, title: 'Zelda II', device_id: 1 }), E, { waitUntil() {} })).status, 200);
+  /* 游戏的增改只碰 games；查关联设备走 D1_DEVICES */
+  assert.deepEqual([...seen.D1_GAMES], ['games']);
+  assert.equal(seen.D1_FINDS.size, 0);
+  const t = readFileSync(W + '/wrangler.toml', 'utf8');
+  for (const b of ['D1_FINDS', 'D1_DEVICES', 'D1_GAMES']) {
+    assert.match(t, new RegExp('binding = "' + b + '"\\ndatabase_name = "styrigx-curio-core"\\ndatabase_id = "26ae9cd2-43c9-4bc0-b558-b35560ed9d7c"'), b);
+  }
+  assert.equal(t.match(/^migrations_dir = /gm).length, 1);
+  assert.match(t, /\[\[r2_buckets\]\]\nbinding = "R2_PHOTOS"\nbucket_name = "styrigx-curio-core"/);
 });
