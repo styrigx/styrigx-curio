@@ -23,7 +23,7 @@ A sub-site of Styrigx's Space, split out of the main site's bookmarks (2026-10-2
 - **Export** everything as a bookmarks file any browser can import.
 - **Private** categories and links are hidden from visitors.
 
-Stack: Hugo + Tailwind on Cloudflare Pages (static only), Worker `styrigx-curio-core` on `curio.styrigx.com/api/*`, D1 `styrigx-curio`, R2 `styrigx-curio`. The repo holds no keys: pages are guarded by the main site's auth gateway and the API asks the gateway over a service binding.
+Stack: Hugo + Tailwind on Cloudflare Pages (static only), Worker `styrigx-curio-core` on `curio.styrigx.com/api/*`, D1 `styrigx-curio-core`, R2 `styrigx-curio-core`. The repo holds no keys: pages are guarded by the main site's auth gateway and the API asks the gateway over a service binding.
 
 See [STRUCTURE.md](STRUCTURE.md) for the layout and [README.md](README.md) for the API table.
 

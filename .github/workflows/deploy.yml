@@ -124,7 +124,7 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: workers/core
           wranglerVersion: '4'
-          command: d1 migrations apply styrigx-curio --remote
+          command: d1 migrations apply styrigx-curio-core --remote
 
       - name: Deploy styrigx-curio-core
         # 先部署接口 Worker（路由 curio.styrigx.com/api/* 优先于 Pages），再部署 Pages。

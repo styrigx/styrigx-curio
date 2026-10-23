@@ -43,8 +43,8 @@ Styrigx's Space 的子站，从主站的「书签」独立出来（2026-10-21）
 |---|---|
 | 页面 | Hugo + Tailwind，Cloudflare Pages 只放静态文件 |
 | 接口 | Worker `styrigx-curio-core`（`workers/core/`），路由 `curio.styrigx.com/api/*` |
-| 数据 | Cloudflare D1 `styrigx-curio`（分类、收藏、导入记录、设备、游戏） |
-| 文件 | Cloudflare R2 `styrigx-curio`（`icons/` 图标缓存、`imports/` 导入原文备份、`photos/` 设备照片和游戏封面） |
+| 数据 | Cloudflare D1 `styrigx-curio-core`（分类、收藏、导入记录、设备、游戏） |
+| 文件 | Cloudflare R2 `styrigx-curio-core`（`icons/` 图标缓存、`imports/` 导入原文备份、`photos/` 设备照片和游戏封面） |
 | 登录 | 不持任何钥匙：页面由主站鉴权网关验会话，接口经服务绑定问网关 |
 
 目录说明见 [STRUCTURE.md](STRUCTURE.md)。
@@ -66,7 +66,7 @@ Styrigx's Space 的子站，从主站的「书签」独立出来（2026-10-21）
 | `GET /api/photo?kind=device\|game&id=` | 有效会话 | 设备照片 / 游戏封面（访客拿不到私密条目的） |
 | `POST` `DELETE /api/photo?kind=…&id=` | 主人 + 同源 | 传（webp / jpeg / png，≤ 3 MB，浏览器先缩到长边 1600）/ 删照片 |
 
-数据库迁移在 `workers/core/migrations/`，CI 部署 core 之前自动跑（`d1 migrations apply styrigx-curio --remote`）。
+数据库迁移在 `workers/core/migrations/`，CI 部署 core 之前自动跑（`d1 migrations apply styrigx-curio-core --remote`）。
 `0002_seed` 是从主站书签迁来的初始收藏（`data/seed.json` → `node scripts/gen-seed-sql.mjs`），只往空库里写，不删不改已有数据。
 
 ## 本地开发
