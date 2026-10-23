@@ -38,7 +38,7 @@ styrigx-curio/
 
 | 位置 | 是什么 |
 |---|---|
-| `wrangler.toml` | 路由 `curio.styrigx.com/api/*`、D1 绑定 `DB`、R2 绑定 `FILES`、网关服务绑定 `AUTH`、全站搜索 KV `SEARCH_KV`、每小时 Cron |
+| `wrangler.toml` | 路由 `curio.styrigx.com/api/*`、D1 绑定 `D1_FINDS`（links、cats、imports）/ `D1_DEVICES`（devices）/ `D1_GAMES`（games）（同一个库 styrigx-curio-core）、R2 绑定 `R2_PHOTOS`、网关服务绑定 `AUTH`、全站搜索 KV `KV_SEARCH_INDEX`、每小时 Cron |
 | `src/index.js` | 入口：全部 `/api/*` 先问网关会话（没有公开接口） |
 | `src/search-index.js` | 全站搜索索引：收藏 / 设备 / 游戏 → KV `site:curio`（改内容的写接口成功后重建 + Cron 每小时兜底；私密的标 `private`） |
 | `src/routes.js` | 路由表（与 `src/api/` 一一对应，测试核对） |

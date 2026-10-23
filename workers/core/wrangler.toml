@@ -24,15 +24,31 @@ head_sampling_rate = 1
 pattern = "curio.styrigx.com/api/*"
 zone_name = "styrigx.com"
 
+# D1 styrigx-curio-core：一个库里三套独立数据，各绑一个名字（value 相同）：
+#   D1_FINDS   发现：links、cats、imports
+#   D1_DEVICES 设备：devices
+#   D1_GAMES   游戏：games
+# 跨两套数据的单条 SQL / batch（如搜索索引、照片清扫、设备 + 游戏一起读）用主表那套的绑定，代码里有注释。
+# migrations_dir 只配在第一条上：`wrangler d1 migrations apply styrigx-curio-core` 按 database_name 找到的就是它。
 [[d1_databases]]
-binding = "DB"
+binding = "D1_FINDS"
 database_name = "styrigx-curio-core"
 database_id = "26ae9cd2-43c9-4bc0-b558-b35560ed9d7c"
 migrations_dir = "migrations"
 
+[[d1_databases]]
+binding = "D1_DEVICES"
+database_name = "styrigx-curio-core"
+database_id = "26ae9cd2-43c9-4bc0-b558-b35560ed9d7c"
+
+[[d1_databases]]
+binding = "D1_GAMES"
+database_name = "styrigx-curio-core"
+database_id = "26ae9cd2-43c9-4bc0-b558-b35560ed9d7c"
+
 # R2：icons/（网站小图标缓存）、imports/（每次导入的浏览器书签原文，备份，不自动删）、photos/（设备照片 / 游戏封面；每天清扫没人引用的）
 [[r2_buckets]]
-binding = "FILES"
+binding = "R2_PHOTOS"
 bucket_name = "styrigx-curio-core"
 
 # 验票：主站鉴权网关的 RPC 入口（session）。
@@ -44,7 +60,7 @@ entrypoint = "SessionVerifier"
 # 全站搜索索引：KV styrigx-search-index（主站 styrigx-search-index Worker 读）。本 Worker 只写自己那条 site:curio：
 # 改内容的写接口成功后重建（ctx.waitUntil），下面的 Cron 每小时兜底一次。格式见 src/search-index.js。
 [[kv_namespaces]]
-binding = "SEARCH_KV"
+binding = "KV_SEARCH_INDEX"
 id = "bd1babcc3fe74d58994e254c74d34ced"
 
 # Cron：每小时第 23 分重建一次搜索索引（首次部署后也靠它填上）；UTC 19:23（北京 03:23）那轮顺带清扫 R2 photos/ 里没人引用的照片。

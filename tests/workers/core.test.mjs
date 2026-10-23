@@ -83,7 +83,7 @@ function call(p, { role = null, db = makeD1(), r2 = makeR2(), method = 'GET', bo
   if (origin) headers.Origin = origin;
   if (body !== undefined && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
   const req = new Request(ORIGIN + p, { method, headers, body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body) });
-  return worker.fetch(req, { AUTH: auth(role, throws), DB: db, FILES: r2 }, CTX);
+  return worker.fetch(req, { AUTH: auth(role, throws), D1_FINDS: db, D1_DEVICES: db, D1_GAMES: db, R2_PHOTOS: r2 }, CTX);
 }
 const op = async (db, body, role = 'owner') => call('/api/links', { role, db, method: 'POST', body });
 const list = async (db, role) => (await call('/api/links', { role, db })).json();
@@ -377,7 +377,7 @@ test('图标：没缓存现抓（apple-touch-icon → favicon.ico），存 R2 �
   const f = fakeFetch({ 'https://site.example/favicon.ico': () => new Response(PNG, { headers: { 'Content-Type': 'application/octet-stream' } }) });
   const ctxFetch = { waitUntil() {} };
   const req = (id, role = 'owner') => new Request(ORIGIN + '/api/icon?id=' + id, { headers: { Cookie: 'x' } });
-  const env = (role) => ({ AUTH: auth(role), DB: db, FILES: r2 });
+  const env = (role) => ({ AUTH: auth(role), D1_FINDS: db, D1_DEVICES: db, D1_GAMES: db, R2_PHOTOS: r2 });
   const r = await I.onRequestGet({ request: req(1), env: env('owner'), fetchImpl: f, ...ctxFetch });
   assert.equal(r.status, 200);
   assert.equal(r.headers.get('Content-Type'), 'image/x-icon');
@@ -398,7 +398,7 @@ test('图标：抓不到存「没有」标记，7 天内不再抓；访客拿不
   await op(db, { op: 'link.add', cat: 1, url: 'https://none.example/', name: 'N' });
   await op(db, { op: 'link.add', cat: 1, url: 'https://secret.example/', name: 'S', private: true });
   const f = fakeFetch({ 'https://none.example/favicon.ico': () => new Response('<html>', { headers: { 'Content-Type': 'text/html' } }) });
-  const env = (role) => ({ AUTH: auth(role), DB: db, FILES: r2 });
+  const env = (role) => ({ AUTH: auth(role), D1_FINDS: db, D1_DEVICES: db, D1_GAMES: db, R2_PHOTOS: r2 });
   const get = (id, role = 'owner') => I.onRequestGet({ request: new Request(ORIGIN + '/api/icon?id=' + id), env: env(role), fetchImpl: f });
   assert.equal((await get(1)).status, 404);
   assert.equal(f.calls.length, 2);

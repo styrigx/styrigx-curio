@@ -15,7 +15,7 @@ html, body {
 @supports (overflow-x: clip) {
   html, body { overflow-x: clip; }
 }
-/* @sgx-shell:begin styrigx/styrigx-space@main web/shared/shell va0ce6e491194（scripts/sync-shell.mjs 写入，勿手改） */
+/* @sgx-shell:begin styrigx/styrigx-space@main web/shared/shell v5cb1baa5ea73（scripts/sync-shell.mjs 写入，勿手改） */
 /* ---- tokens.css ---- */
 /* 由 styrigx-space scripts/gen-shell.mjs 从 web/data/palette-roles.json 生成，勿手改；子站用 scripts/sync-shell.mjs 同步。 */
 /* 22 套七色调色板（1 背景色 + 6 前景撞色）：<html data-palette="<id>">（默认 dustyblue 不写），深色 <html class="dark">；自定义种子在运行时用 palette-scheme.js 的 rolesCss() 覆盖。 */
@@ -6787,10 +6787,6 @@ html, body {
 .sgx-drawer-me img { width: 100%; height: 100%; display: block; border: 0; border-radius: 999px; object-fit: cover; }
 .sgx-drawer-me:active::after { content: ""; position: absolute; inset: 0; border-radius: 999px; background: var(--sgx-state-pressed-bg); }
 .sgx-drawer-me:focus-visible { outline: 2px solid var(--sgx-focus-ring); outline-offset: 2px; }
-/* 2026-10-23 抽屉头：字标下面一行小字标语（从锁屏 / 登录页左上角挪过来） */
-/* 标语绝对定位挂在字标正下方：字标的位置、抽屉头高度和分隔线都不变（标语落在字标和分隔线之间的空白里） */
-.sgx-drawer-id { flex: 0 1 auto; min-width: 0; position: relative; display: flex; }
-.sgx-drawer-tag { position: absolute; left: 0; top: calc(100% - 2px); max-width: 100%; font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: .04em; color: var(--sgx-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sgx-drawer-brand { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: var(--sgx-drawer-brand-size);
   font-weight: var(--sgx-drawer-brand-weight); line-height: 1.2; letter-spacing: -0.01em; white-space: nowrap; }
 /* 字标（2026-10-21）：抽屉头的站名是内联 SVG 字标 .sgx-wordmark（web/layouts/partials/shell-wordmark.html；共享外壳 nav.json 的 wordmark 字段是同一份）。

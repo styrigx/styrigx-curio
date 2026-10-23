@@ -11,7 +11,7 @@ export async function onRequestGet(context) {
   if (!isSameSite(request)) return err('origin', 403);
   const { response } = await requireOwner(context);
   if (response) return response;
-  const db = env && env.DB;
+  const db = env && env.D1_FINDS;
   if (!db) return err('server', 503);
   await ensureSchema(db);
   const [cats, links] = await db.batch([

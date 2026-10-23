@@ -86,8 +86,8 @@ const DEFAULTS = {
   game: { platform: '', device_id: 0, edition: '', status: 'want', rating: 0, review: '', private: 0 },
 };
 export const KINDS = {
-  device: { table: 'devices', fields: DEVICE_FIELDS, required: 'name', photo: 'photo', limit: L.devices },
-  game: { table: 'games', fields: GAME_FIELDS, required: 'title', photo: 'cover', limit: L.games },
+  device: { table: 'devices', binding: 'D1_DEVICES', fields: DEVICE_FIELDS, required: 'name', photo: 'photo', limit: L.devices },
+  game: { table: 'games', binding: 'D1_GAMES', fields: GAME_FIELDS, required: 'title', photo: 'cover', limit: L.games },
 };
 
 /**
@@ -143,8 +143,20 @@ export function parseItemOp(kind, b) {
   }
 }
 
+/**
+ * 这一种条目（device / game）的表所在的 D1 绑定（D1_DEVICES / D1_GAMES，同一个库 styrigx-curio-core）；没绑返回 null
+ * @param {Record<string, any>|undefined} env @param {string} kind
+ */
+export function itemDb(env, kind) {
+  const K = KINDS[kind];
+  return (env && K && env[K.binding]) || null;
+}
+
 const schemaDone = new WeakSet();
-/** 建表（幂等） */
+/**
+ * 建表（幂等）。一个 batch 同时建 devices、games 两张表（跨两套数据）：两个绑定是同一个库，
+ * 调用方传自己手上那个绑定即可（D1_DEVICES / D1_GAMES / 搜索索引用的 D1_FINDS 都行）。
+ */
 export async function ensureItemSchema(db) {
   if (schemaDone.has(db)) return;
   await db.batch(ITEM_SCHEMA.map((s) => db.prepare(s)));
@@ -167,7 +179,9 @@ function rowGame(r) {
 /**
  * 读设备和游戏：{devices:[...], games:[...]}（照片只给有没有，图走 /api/photo）。
  * owner=false（访客）：私密的不给；设备的 replaced_by、游戏的 device_id 指向访客看不到的设备时置 0。
- * @param {any} db
+ * 一个 batch 读 devices + games（跨两套数据：游戏要按设备可见性处理 device_id，要同一快照），
+ * 所以用主表 devices 那套的绑定 D1_DEVICES 执行（同一个库）。
+ * @param {any} db  D1_DEVICES
  * @param {boolean} owner
  */
 export async function listItems(db, owner) {
@@ -191,17 +205,21 @@ async function one(db, sql, ...args) {
  * 执行一个已校验的写操作。返回 {error} 或 {removed: [R2 key...]}（删条目时它的照片，交给调用方从 R2 删）。
  * 错误码：not-found / limit / mismatch。关联的设备（replaced_by / device_id）必须存在，否则 not-found。
  * 删设备时：别的设备 replaced_by 指向它、游戏 device_id 指向它的，都置 0。
- * @param {any} db
+ * 绑定：本表的读写用这种条目自己的绑定 db（device → D1_DEVICES，game → D1_GAMES）；
+ * 查「关联的设备在不在」用 devDb（D1_DEVICES）。删设备那个 batch 同时改 devices 和 games（跨两套数据，要一起成功），
+ * 用主表 devices 的绑定（此时 db 就是 D1_DEVICES）执行。
+ * @param {any} db  o.kind 对应的绑定（itemDb(env, o.kind)）
  * @param {any} o  parseItemOp 的结果
  * @param {number} [now]
+ * @param {any} [devDb]  D1_DEVICES；不传就用 db（同一个库）
  */
-export async function applyItemOp(db, o, now = Date.now()) {
+export async function applyItemOp(db, o, now = Date.now(), devDb = db) {
   const K = KINDS[o.kind];
   const T = K.table;
   const verb = o.op.split('.')[1];
   const refOk = async (f) => {
     const ref = o.kind === 'device' ? f.replaced_by : f.device_id;
-    return !ref || !!(await one(db, 'SELECT id FROM devices WHERE id = ?1', ref));
+    return !ref || !!(await one(devDb, 'SELECT id FROM devices WHERE id = ?1', ref));
   };
   switch (verb) {
     case 'add': {
@@ -230,6 +248,7 @@ export async function applyItemOp(db, o, now = Date.now()) {
       if (!cur) return { error: 'not-found' };
       const stmts = [db.prepare(`DELETE FROM ${T} WHERE id = ?1`).bind(o.id)];
       if (o.kind === 'device') {
+        /* 跨表 batch（devices + games）：db 此时是 D1_DEVICES（主表），同一个库，原子执行 */
         stmts.push(db.prepare('UPDATE devices SET replaced_by = 0 WHERE replaced_by = ?1').bind(o.id));
         stmts.push(db.prepare('UPDATE games SET device_id = 0 WHERE device_id = ?1').bind(o.id));
       }

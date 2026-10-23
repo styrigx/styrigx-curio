@@ -32,8 +32,8 @@ export async function onRequestPost(context) {
   const { request, env } = context;
   const denied = await guardWrite(context);
   if (denied) return denied;
-  const db = env && env.DB;
-  const r2 = env && env.FILES;
+  const db = env && env.D1_FINDS;
+  const r2 = env && env.R2_PHOTOS;
   if (!db) return err('server', 503);
   if (!r2) return err('backup', 503);
   const len = Number(request.headers.get('Content-Length') || 0);

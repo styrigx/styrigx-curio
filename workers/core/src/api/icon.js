@@ -1,5 +1,5 @@
 // workers/core/src/api/icon.js
-// GET /api/icon?id=<收藏 id>  —— 收藏的小图标，缓存在 R2（FILES）。任何有效会话；访客只能取公开收藏的图标。
+// GET /api/icon?id=<收藏 id>  —— 收藏的小图标，缓存在 R2（R2_PHOTOS）。任何有效会话；访客只能取公开收藏的图标。
 //
 // 缓存 key：收藏自己填了图标网址 → icons/u/<sha256(图标网址) 前 24 位>；没填 → icons/h/<域名>（同一个网站的收藏共用一份）。
 // 没缓存时现抓：自己填的图标网址，否则 https://<域名>/apple-touch-icon.png、/favicon.ico。
@@ -87,8 +87,8 @@ export async function onRequestGet(context) {
   if (!role) return err('unauthorized', 401);
   const id = idParam(request);
   if (!id) return err('bad-id', 400);
-  const db = env && env.DB;
-  const r2 = env && env.FILES;
+  const db = env && env.D1_FINDS;
+  const r2 = env && env.R2_PHOTOS;
   if (!db || !r2) return err('server', 503);
   const link = await db
     .prepare('SELECT l.url, l.icon, l.private AS lp, c.private AS cp FROM links l LEFT JOIN cats c ON c.id = l.cat_id WHERE l.id = ?1')

@@ -64,7 +64,7 @@ test('只删没人引用、上传超过 1 小时的 photos/；引用的、刚传
     ['icons/a.png', OLD],
     ['imports/x.html', OLD],
   ]);
-  const r = await S.sweepPhotos({ DB: db, FILES: r2 }, NOW);
+  const r = await S.sweepPhotos({ D1_DEVICES: db, R2_PHOTOS: r2 }, NOW);
   assert.deepEqual([r.ok, r.scanned, r.deleted], [true, 5, 2]);
   assert.deepEqual([...r2.m.keys()].sort(), [
     'icons/a.png', 'imports/x.html', 'photos/device/1-100.webp', 'photos/game/1-200.webp', 'photos/game/2-999.webp',
@@ -74,10 +74,10 @@ test('只删没人引用、上传超过 1 小时的 photos/；引用的、刚传
 test('D1 读不到：整轮不删', async () => {
   const r2 = makeR2([['photos/game/9-300.webp', OLD]]);
   const bad = { prepare() { throw new Error('boom'); }, batch() { throw new Error('boom'); }, exec() { throw new Error('boom'); } };
-  const r = await S.sweepPhotos({ DB: bad, FILES: r2 }, NOW);
+  const r = await S.sweepPhotos({ D1_DEVICES: bad, R2_PHOTOS: r2 }, NOW);
   assert.equal(r.ok, false);
   assert.equal(r2.m.size, 1);
-  assert.deepEqual(await S.sweepPhotos({ FILES: r2 }, NOW), { ok: false, scanned: 0, deleted: 0, reason: 'unbound' });
+  assert.deepEqual(await S.sweepPhotos({ R2_PHOTOS: r2 }, NOW), { ok: false, scanned: 0, deleted: 0, reason: 'unbound' });
 });
 
 test('Cron：只有 UTC 19 点那轮扫照片；其它整点只重建索引', async () => {
@@ -86,7 +86,7 @@ test('Cron：只有 UTC 19 点那轮扫照片；其它整点只重建索引', as
   const db = makeD1();
   await seed(db);
   const r2 = makeR2([['photos/game/9-300.webp', OLD]]);
-  const env = { DB: db, FILES: r2 };
+  const env = { D1_DEVICES: db, R2_PHOTOS: r2 };
   await worker.scheduled({ scheduledTime: Date.UTC(2026, 9, 24, 18, 23) }, env, { waitUntil() {} });
   assert.equal(r2.m.size, 1);
   await worker.scheduled({ scheduledTime: NOW }, env, { waitUntil() {} });
