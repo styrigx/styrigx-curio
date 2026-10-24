@@ -7047,6 +7047,12 @@ html { scroll-padding-top: calc(var(--nav-h) + var(--sgx-content-gap)); }
 #site-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 50; pointer-events: none;
   background: transparent; border: 0; box-shadow: none; padding: 0; }
 .sgx-topbar { view-transition-name: sgx-topbar; }
+/* 顶栏右圆分享（.sgx-tb-end.sgx-tb-share，2026-10-24 留言板撤了）：圆本身用共享外壳 .sgx-tb-end（52px，同九宫格圆）；
+   共享外壳的「生成短链中」样式只写在胶囊按钮 .sgx-tb-gbtn 上，这里给单圆补上同一套（图标呼吸、点了不理；动画 sgx-share-busy 在共享外壳） */
+.sgx-tb-end.is-busy { cursor: progress; }
+.sgx-tb-end.is-busy svg { animation: sgx-share-busy .9s ease-in-out infinite alternate; }
+.reduced-motion .sgx-tb-end.is-busy svg { animation: none; opacity: .4; }
+@media (prefers-reduced-motion: reduce) { .sgx-tb-end.is-busy svg { animation: none; opacity: .4; } }
 /* 长条里的分段滑块 发现 / 设备 / 游戏：外观照主站顶栏三栏 .sgx-tb-tab（高 = --sgx-tb-ic 40px、间距 4px、手机三等分最宽 400 居中、
    ≥ 600 宽按字定宽最小 88px；当前项 = 导航抽屉当前项同一套 tonal 药丸 --sgx-nav-selected / --sgx-on-nav-selected，其他两项次要文字色，
    悬停 / 按下走状态层）。本站多一个可滑动的指示器（左右滑切页签），所以当前项的底色画在 .sgx-seg-ind 上，按 --seg-pos（0..2）平移。 */
@@ -7073,12 +7079,11 @@ html { scroll-padding-top: calc(var(--nav-h) + var(--sgx-content-gap)); }
   .sgx-seg { width: auto; max-width: none; grid-template-columns: repeat(3, minmax(88px, 1fr)); }
   .sgx-seg-btn { padding: 0 16px; }
 }
-/* 窄手机（< 380px，如 360 宽）：右边换成分享 + 留言板胶囊（共享外壳 .sgx-tb-end-group，86px）后长条窄了 34px，
-   英文「Devices」放不下（改之前 360 宽就已经被省略号截断）；格子间距 4 → 2px、左右内边距 6 → 0、字号 15 → 14px
-   （高度、指示器、三格等宽不变），中文本来就放得下 */
+/* 窄手机（< 380px，如 360 宽）：英文「Devices」在 52px 右圆旁边也放不下（加分享胶囊之前 360 宽就被省略号截断，2026-10-24 留言板撤掉后仍保留）；
+   只把格子间距 4 → 2px、左右内边距 6 → 0（字号、高度、指示器、三格等宽都不变），中文本来就放得下 */
 @media (max-width: 379.98px) {
   .sgx-seg { --seg-gap: 2px; }
-  .sgx-seg-btn { padding: 0; font-size: 14px; }
+  .sgx-seg-btn { padding: 0; }
 }
 /* 粗指针（触屏）：看上去仍是 40px 高的药丸，点击区 48px（同主站 .sgx-tb-tab） */
 @media (pointer: coarse) {
@@ -7090,14 +7095,14 @@ html { scroll-padding-top: calc(var(--nav-h) + var(--sgx-content-gap)); }
 
 /* ===== 内容卡片材质（同主站 .widget.bg-m-container-lowest）：中性玻璃 --sgx-mat + outline-variant 细边 +
    0.5px 内高光 / 接触影 / 环境影；卡片后面只有固定的光晕，不加 backdrop-filter（几十张卡同时模糊会拖慢滚动） ===== */
-.cu-tile, .it-card, .cu-gb-card {
+.cu-tile, .it-card {
   background-color: var(--sgx-mat); background-image: none; border: 1px solid var(--sgx-outline-variant); color: var(--sgx-text-primary);
   box-shadow:
     inset 0 0.5px 0 rgba(255,255,255,.65),
     0 1px 2px rgba(16,24,40,.08),
     0 12px 32px -12px rgba(16,24,40,.22);
 }
-.dark .cu-tile, .dark .it-card, .dark .cu-gb-card {
+.dark .cu-tile, .dark .it-card {
   box-shadow:
     inset 0 0.5px 0 rgba(255,255,255,.09),
     0 1px 2px rgba(0,0,0,.45),
@@ -7296,8 +7301,3 @@ html[data-cu-tab="devices"] #cu-fab, html[data-cu-tab="games"] #cu-fab { display
 .cu-crop-btn:focus-visible { outline: 2px solid rgb(255 255 255); outline-offset: 2px; }
 .reduced-motion .it-card { transition: none; }
 
-/* ===== 留言板（/guestbook/，layouts/_default/guestbook.html）：一张内容卡片（同 .it-card 的材质、描边、圆角），里面说明 + Giscus ===== */
-.cu-gb-card { padding: 18px 16px 8px; border-radius: 1.75rem; }
-.cu-gb-note { margin: 0 4px 14px; font-size: 14px; line-height: 1.6; color: var(--sgx-text-secondary); }
-.cu-gb-giscus { min-height: 240px; }
-.cu-gb-giscus .giscus, .cu-gb-giscus .giscus-frame { width: 100%; border: 0; }
