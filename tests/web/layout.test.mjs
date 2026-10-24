@@ -12,7 +12,7 @@ const read = (p) => readFileSync(path.join(REPO, p), 'utf8');
 const base = read('web/layouts/_default/baseof.html');
 const index = read('web/layouts/index.html');
 
-test('顶栏：九宫格 · 长条（首页 = 分段滑块 发现 / 设备 / 游戏；其他页只有页名）· 右圆留言板；没有搜索栏、快捷面板、头像', () => {
+test('顶栏：九宫格 · 长条（首页 = 分段滑块 发现 / 设备 / 游戏；其他页只有页名）· 右胶囊（分享 + 留言板）；没有搜索栏、快捷面板、头像', () => {
   assert.match(base, /class="sgx-tb-nav"/);
   assert.match(base, /<div class="sgx-seg" role="tablist"[^>]*data-cu-seg/);
   assert.match(base, /\{\{ else \}\}\s*<span class="sgx-tb-title">\{\{ \$pageName \}\}<\/span>/);
@@ -21,9 +21,11 @@ test('顶栏：九宫格 · 长条（首页 = 分段滑块 发现 / 设备 / 游
     assert.match(base, new RegExp('\\(dict "id" "' + id + '" "zh" "' + zh + '" "en" "' + en + '" "hash" "' + hash + '"\\)'), id);
   }
   assert.match(base, /data-cu-tab="\{\{ \$t\.id \}\}"/);
-  /* 右圆 = 留言板（三个子站同一个 pen-line 图标），链本站 /guestbook/、英文 /en/guestbook/ */
+  /* 留言板（三个子站同一个 pen-line 图标），链本站 /guestbook/、英文 /en/guestbook/ */
   assert.match(base, /\$gb := cond \$isEn "\/en\/guestbook\/" "\/guestbook\/"/);
-  assert.match(base, /<a class="sgx-tb-end sgx-tb-guestbook" href="\{\{ \$gb \}\}"[^>]*>\{\{ partial "icon\.html" "pen-line" \}\}<\/a>/);
+  /* 2026-10-24：右胶囊 = 分享（共享外壳 share.js，图标 nav.json share）+ 留言板 */
+  assert.match(base, /<div class="sgx-tb-end-group">\s*<button type="button" class="sgx-tb-gbtn sgx-tb-share" data-sgx-share [^>]*>\{\{ index \(resources\.Get "sgx-shell\/nav\.json" \| transform\.Unmarshal\)\.icons "share" \| safeHTML \}\}<\/button>\s*<a class="sgx-tb-gbtn sgx-tb-guestbook" href="\{\{ \$gb \}\}"[^>]*>\{\{ partial "icon\.html" "pen-line" \}\}<\/a>\s*<\/div>/);
+  assert.match(base, /resources\.Get "js\/sgx\/share-host\.js" \| js\.Build/);
   assert.doesNotMatch(base, /cu-search|id="cu-q"|sgx-tb-quick|sgx-qp|sgx-tb-me|sgx-tb-avatar/);
 });
 
