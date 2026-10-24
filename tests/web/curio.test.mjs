@@ -3,6 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
 
 const require = createRequire(import.meta.url);
 const C = require('../../web/assets/js/curio.js');
@@ -106,6 +107,48 @@ test('筛选、换代历史、平台联想、缩图尺寸', () => {
   assert.deepEqual(IT.fitSize(800, 600, 1600), { w: 800, h: 600 });
   assert.deepEqual(IT.KINDS.length, 9);
   assert.deepEqual(IT.STATUS, ['want', 'playing', 'done', 'shelved']);
+});
+
+test('裁剪几何：取景框按卡片比例、照片始终盖满、框住的原图区域、重新调整摆回原位', () => {
+  const css = readFileSync(new URL('../../web/assets/css/input.css', import.meta.url), 'utf8');
+  /* 比例跟卡片的 CSS 一致：设备 .it-media 4/3，游戏 .it-media--cover 3/4 */
+  assert.match(css, /\.it-media \{[^}]*aspect-ratio: 4\/3;/);
+  assert.match(css, /\.it-media--cover \{ aspect-ratio: 3\/4; \}/);
+  assert.equal(IT.CROP_RATIO.device, 4 / 3);
+  assert.equal(IT.CROP_RATIO.game, 3 / 4);
+  /* 412×915 手机：设备框 364×273，游戏框 364×485；矮屏按高度收 */
+  assert.deepEqual(IT.cropFrame(412, 915, 4 / 3), { w: 364, h: 273 });
+  assert.deepEqual(IT.cropFrame(412, 915, 3 / 4), { w: 364, h: 485 });
+  assert.deepEqual(IT.cropFrame(1280, 600, 3 / 4), { w: 285, h: 380 });
+  assert.deepEqual(IT.cropFrame(1920, 1080, 4 / 3), { w: 520, h: 390 });
+  const f = { l: 24, t: 300, w: 364, h: 273 };
+  /* 竖图 3000×4000 放进 4:3 框：按宽盖满，居中 */
+  const c = IT.centerView(3000, 4000, f);
+  assert.equal(c.k, 364 / 3000);
+  const s = IT.cropSource(c, 3000, 4000, f);
+  assert.ok(Math.abs(s.sx) < 1e-9 && Math.abs(s.sw - 3000) < 1e-9);
+  assert.ok(Math.abs(s.sh - 2250) < 1e-6 && Math.abs(s.sy - 875) < 1e-6, '上下各裁掉 875');
+  /* 夹住：缩小不到盖满，放大最多 8 倍，拖不出空白 */
+  assert.equal(IT.clampView({ tx: 0, ty: 0, k: 0.01 }, 3000, 4000, f, 8).k, c.k);
+  assert.equal(IT.clampView({ tx: 0, ty: 0, k: 99 }, 3000, 4000, f, 8).k, c.k * 8);
+  const far = IT.clampView({ tx: 500, ty: 900, k: c.k }, 3000, 4000, f, 8);
+  assert.deepEqual([far.tx, far.ty], [24, 300], '左上角不能进框');
+  const away = IT.clampView({ tx: -9999, ty: -9999, k: c.k }, 3000, 4000, f, 8);
+  assert.ok(Math.abs(away.tx + 3000 * c.k - (24 + 364)) < 1e-9 && Math.abs(away.ty + 4000 * c.k - (300 + 273)) < 1e-9, '右下角不能进框');
+  /* 放大 2 倍拖到右下：原图区域在图内、比例 4:3 */
+  const z = IT.clampView({ tx: -9999, ty: -9999, k: c.k * 2 }, 3000, 4000, f, 8);
+  const zs = IT.cropSource(z, 3000, 4000, f);
+  assert.ok(Math.abs(zs.sx + zs.sw - 3000) < 1e-6 && Math.abs(zs.sy + zs.sh - 4000) < 1e-6);
+  assert.ok(Math.abs(zs.sw / zs.sh - 4 / 3) < 1e-9);
+  /* 重新调整 / 转屏：换个框，照原图区域摆回去还是同一块 */
+  const f2 = { l: 10, t: 50, w: 520, h: 390 };
+  const back = IT.cropSource(IT.viewFromSource(zs, f2), 3000, 4000, f2);
+  for (const key of ['sx', 'sy', 'sw', 'sh']) assert.ok(Math.abs(back[key] - zs[key]) < 1e-6, key);
+  /* 输出：严格按卡片比例，长边 1200，小图不放大；取景框取整的误差（364×485）不进成品 */
+  assert.deepEqual(IT.cropOut(zs.sw, zs.sh, 4 / 3, 1200), { w: 1200, h: 900 });
+  assert.deepEqual(IT.cropOut(750.6, 1000, 3 / 4, 1200), { w: 750, h: 1000 });
+  assert.deepEqual(IT.cropOut(4000, 3000, 4 / 3, 1200), { w: 1200, h: 900 });
+  assert.deepEqual(IT.cropOut(300, 400, 3 / 4, 1200), { w: 300, h: 400 });
 });
 
 test('页签 hash：#devices / #games，其余都是发现；切回发现保留 #c/<id>', () => {

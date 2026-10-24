@@ -68,7 +68,7 @@
     </div>
     <form id="dv-form" class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pb-4 flex flex-col gap-4" novalidate>
       <div class="it-photo-row">
-        <span id="dv-photo-prev" class="it-photo-prev" aria-hidden="true"></span>
+        <button id="dv-photo-prev" type="button" class="it-photo-prev" disabled aria-hidden="true"></button>
         <div class="flex flex-col gap-2 items-start">
           <label class="cu-btn-text it-file">{{ if $isEn }}Choose photo{{ else }}选照片{{ end }}<input id="dv-photo" type="file" accept="image/*" class="sr-only"></label>
           <button id="dv-photo-del" type="button" class="cu-btn-text it-photo-del hidden">{{ if $isEn }}Remove photo{{ else }}去掉照片{{ end }}</button>
@@ -118,7 +118,7 @@
     </div>
     <form id="gm-form" class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pb-4 flex flex-col gap-4" novalidate>
       <div class="it-photo-row">
-        <span id="gm-photo-prev" class="it-photo-prev it-photo-prev--cover" aria-hidden="true"></span>
+        <button id="gm-photo-prev" type="button" class="it-photo-prev it-photo-prev--cover" disabled aria-hidden="true"></button>
         <div class="flex flex-col gap-2 items-start">
           <label class="cu-btn-text it-file">{{ if $isEn }}Choose cover{{ else }}选封面{{ end }}<input id="gm-photo" type="file" accept="image/*" class="sr-only"></label>
           <button id="gm-photo-del" type="button" class="cu-btn-text it-photo-del hidden">{{ if $isEn }}Remove cover{{ else }}去掉封面{{ end }}</button>
