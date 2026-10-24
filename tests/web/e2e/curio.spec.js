@@ -311,10 +311,15 @@ test('主人：添加设备（类型、日期、照片缩图转 webp 上传）�
   await page.locator('#dv-bought').fill('2026-08-01');
   await page.locator('#dv-os').fill('One UI 8 Watch');
   await page.locator('#dv-specs').fill('44mm\n蓝牙版');
-  /* 3000×2000 的 PNG：浏览器里缩到 1600 宽、转 webp */
+  /* 3000×2000 的 PNG：先「移动和缩放」（4:3 框，同卡片），完成后裁成 1200×900、转 webp */
   const big = await page.evaluate(() => { const c = document.createElement('canvas'); c.width = 3000; c.height = 2000; const g = c.getContext('2d'); g.fillStyle = '#3a6'; g.fillRect(0, 0, 3000, 2000); return c.toDataURL('image/png').split(',')[1]; });
   await page.locator('#dv-photo').setInputFiles({ name: 'watch.png', mimeType: 'image/png', buffer: Buffer.from(big, 'base64') });
+  await expect(page.locator('dialog.cu-crop')).toBeVisible();
+  await expect(page.locator('.cu-crop-title')).toHaveText('移动和缩放');
+  await page.locator('[data-crop-done]').click();
+  await expect(page.locator('dialog.cu-crop')).toBeHidden();
   await expect(page.locator('#dv-photo-prev img')).toHaveCount(1);
+  await expect.poll(() => page.locator('#dv-photo-prev img').evaluate((i) => i.naturalWidth + 'x' + i.naturalHeight)).toBe('1200x900');
   await expect(page.locator('#dv-photo-del')).toBeVisible();
   await page.locator('#dv-save').click();
   await expect(page.locator('#dv-edit-wrap')).not.toHaveClass(/open/);
@@ -325,6 +330,8 @@ test('主人：添加设备（类型、日期、照片缩图转 webp 上传）�
   expect(up.type).toBe('image/webp');
   expect(up.size).toBeGreaterThan(0);
   await expect(page.locator('#bk-toast')).toHaveText('已保存');
+  /* 第一次传图：卡片立刻显示照片，不用刷新 */
+  await expect(page.locator('#dv-list [data-dev="100"] .it-media img')).toHaveCount(1);
 
   /* 编辑：S25 退役，换成新加的 Watch（只是测选择框） */
   await page.locator('#dv-list [data-dev="2"]').click();
@@ -377,6 +384,76 @@ test('主人：添加游戏（状态、评分、平台联想、关联设备）',
   const card = page.locator('#gm-list .it-card').last();
   await expect(card.locator('.it-sub')).toHaveText('Android · Galaxy S25 Ultra');
   await expect(card.locator('.it-status')).toHaveText('在玩');
+});
+
+/* 一张左右两半不同色的图：裁剪后看缩略图左上角的颜色就知道框住了哪一块 */
+async function halves(page, w, h) {
+  const b64 = await page.evaluate(([w, h]) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.fillStyle = '#d33'; g.fillRect(0, 0, w / 2, h); g.fillStyle = '#33d'; g.fillRect(w / 2, 0, w / 2, h); return c.toDataURL('image/png').split(',')[1]; }, [w, h]);
+  return Buffer.from(b64, 'base64');
+}
+const frameBox = (page) => page.locator('.cu-crop-frame').boundingBox();
+
+test('主人：游戏封面「移动和缩放」——框是卡片的 3:4；拖动换位置；取消不改；点缩略图重新调整；Esc 只关裁剪', async ({ page }) => {
+  const calls = await mock(page, true);
+  await page.goto('/#games');
+  await page.locator('#gm-list [data-game="8"]').click();
+  await page.locator('#it-view-edit').click();
+  await expect(page.locator('#gm-photo-prev')).toBeDisabled();
+  const png = await halves(page, 2000, 1000); /* 3:4 框按高盖满：框住 750×1000，只占一半宽 */
+  await page.locator('#gm-photo').setInputFiles({ name: 'cover.png', mimeType: 'image/png', buffer: png });
+  await expect(page.locator('dialog.cu-crop')).toBeVisible();
+  const fb = await frameBox(page);
+  expect(Math.abs(fb.width / fb.height - 3 / 4)).toBeLessThan(0.01);
+  /* 往右拖到头 → 框住左边（红） */
+  const cx = fb.x + fb.width / 2, cy = fb.y + fb.height / 2;
+  await page.mouse.move(cx, cy); await page.mouse.down(); await page.mouse.move(cx + 300, cy, { steps: 6 }); await page.mouse.up();
+  await page.locator('[data-crop-done]').click();
+  await expect(page.locator('dialog.cu-crop')).toBeHidden();
+  const px = (sel) => page.locator(sel).evaluate((i) => new Promise((ok) => {
+    const go = () => { const c = document.createElement('canvas'); c.width = i.naturalWidth; c.height = i.naturalHeight; const g = c.getContext('2d'); g.drawImage(i, 0, 0);
+      const d = g.getImageData(2, 2, 1, 1).data, e = g.getImageData(c.width - 3, 2, 1, 1).data; ok({ size: c.width + 'x' + c.height, left: d[0] > d[2] ? 'red' : 'blue', right: e[0] > e[2] ? 'red' : 'blue' }); };
+    i.complete && i.naturalWidth ? go() : (i.onload = go);
+  }));
+  expect(await px('#gm-photo-prev img')).toEqual({ size: '750x1000', left: 'red', right: 'red' });
+  await expect(page.locator('#gm-photo-prev')).toBeEnabled();
+  await expect(page.locator('#gm-photo-prev')).toHaveAttribute('aria-label', '调整照片');
+  const before = await page.locator('#gm-photo-prev img').getAttribute('src');
+  /* 重新调整：点缩略图回到裁剪，拖到另一头再取消 → 不变 */
+  await page.locator('#gm-photo-prev').click();
+  await expect(page.locator('dialog.cu-crop')).toBeVisible();
+  await page.mouse.move(cx, cy); await page.mouse.down(); await page.mouse.move(cx - 300, cy, { steps: 6 }); await page.mouse.up();
+  await page.getByRole('button', { name: '取消' }).click();
+  await expect(page.locator('dialog.cu-crop')).toBeHidden();
+  expect(await page.locator('#gm-photo-prev img').getAttribute('src')).toBe(before);
+  /* 再点一次，拖到右边，Esc：裁剪关了，编辑弹层还开着，图也不变 */
+  await page.locator('#gm-photo-prev').click();
+  await expect(page.locator('dialog.cu-crop')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('dialog.cu-crop')).toBeHidden();
+  await expect(page.locator('#gm-edit-wrap')).toHaveClass(/open/);
+  expect(await page.locator('#gm-photo-prev img').getAttribute('src')).toBe(before);
+  /* 第三次：接着上次位置往左拖两下到头（框住右半边）完成 → 全蓝 */
+  await page.locator('#gm-photo-prev').click();
+  await expect(page.locator('dialog.cu-crop')).toBeVisible();
+  for (let i = 0; i < 2; i++) { await page.mouse.move(cx + 100, cy); await page.mouse.down(); await page.mouse.move(cx - 200, cy, { steps: 6 }); await page.mouse.up(); }
+  await page.locator('[data-crop-done]').click();
+  await expect.poll(() => px('#gm-photo-prev img')).toEqual({ size: '750x1000', left: 'blue', right: 'blue' });
+  /* 选新图后取消：还是上一张 */
+  const now = await page.locator('#gm-photo-prev img').getAttribute('src');
+  await page.locator('#gm-photo').setInputFiles({ name: 'other.png', mimeType: 'image/png', buffer: png });
+  await expect(page.locator('dialog.cu-crop')).toBeVisible();
+  await page.locator('[data-crop-cancel]').click();
+  expect(await page.locator('#gm-photo-prev img').getAttribute('src')).toBe(now);
+  /* 保存才上传 */
+  expect(calls.some((c) => c.photo)).toBe(false);
+  await page.locator('#gm-save').click();
+  await expect.poll(() => calls.find((c) => c.photo === 'POST')).toBeTruthy();
+  expect(calls.find((c) => c.photo === 'POST').url).toContain('kind=game&id=8');
+  await expect(page.locator('#gm-list [data-game="8"] .it-media img')).toHaveCount(1);
+  /* 已保存的照片：缩略图不能点（只有刚选、还没保存的图能重新调整） */
+  await page.locator('#gm-list [data-game="8"]').click();
+  await page.locator('#it-view-edit').click();
+  await expect(page.locator('#gm-photo-prev')).toBeDisabled();
 });
 
 test('留言板：右圆进 /guestbook/，长条只有页名，卡片里插入共用 Giscus（specific term=guestbook、输入框在上、跟浅色）；英文页 lang=en', async ({ page }) => {

@@ -4,7 +4,10 @@
  *   点卡片 → 详情（参数、配件、体验、购买 / 退役日期、使用天数、换代历史：从哪台换来、后来换成哪台）。
  *   使用天数不存，按 购买日期 → 退役日期（没退役就是今天）现算。
  * 游戏：卡片（封面、名字、平台、状态、评分），筛选条 全部 / 想玩 / 在玩 / 通关 / 搁置。详情里有版本、在哪台设备上玩、评价。
- * 主人：右下角「设备」「游戏」新建；详情左上角编辑；编辑弹层里删除（要确认）。照片在浏览器里缩到长边 1600、转 webp 再传。
+ * 主人：右下角「设备」「游戏」新建；详情左上角编辑；编辑弹层里删除（要确认）。
+ * 照片：选图 → 全屏「移动和缩放」（同主站头像裁剪：单指拖、双指 / 滚轮缩放，照片始终盖满取景框）。
+ *   取景框 = 卡片显示的比例（设备 .it-media 4:3、游戏 .it-media--cover 3:4），裁好的图卡片里正好铺满、详情里完整显示。
+ *   完成 → 浏览器里裁成长边 ≤1200（不放大）、转 webp（不支持就 jpeg），保存时再传；保存前点缩略图可以重新调整。
  * 访客只读、只看公开的。
  *
  * 数据：GET /api/items；写：POST /api/items {op}；照片：/api/photo?kind=device|game&id=（GET 图、POST 传、DELETE 删）。
@@ -75,7 +78,50 @@ function fitSize(w, h, max){
   return { w: Math.max(1, Math.round(w * k)), h: Math.max(1, Math.round(h * k)) };
 }
 
-var pure = { KINDS: KINDS, STATUS: STATUS, dateMs: dateMs, todayStr: todayStr, usedDays: usedDays, daysText: daysText, filterDevices: filterDevices, filterGames: filterGames, lineage: lineage, platformsOf: platformsOf, fitSize: fitSize };
+/* ---- 裁剪的几何（照片在舞台上：左上角 (tx,ty)、缩放 k；取景框 f = {l,t,w,h}，舞台坐标） ---- */
+/** 卡片显示的比例（宽 / 高），和 CSS 里 .it-media（4/3）、.it-media--cover（3/4）一致 */
+var CROP_RATIO = { device: 4 / 3, game: 3 / 4 };
+/** 取景框尺寸：按比例放进舞台，左右留 24、上下给标题和按钮留 220，宽不超过 520 */
+function cropFrame(stageW, stageH, ratio){
+  var w = Math.max(1, Math.min(stageW - 48, 520)), h = w / ratio, mh = Math.max(1, stageH - 220);
+  if (h > mh) { h = mh; w = h * ratio; }
+  return { w: Math.round(w), h: Math.round(h) };
+}
+/** 刚好盖满取景框的缩放 */
+function coverScale(nw, nh, fw, fh){ return Math.max(fw / nw, fh / nh); }
+/** 夹住视图：缩放在 [盖满, 盖满 × zmax]，照片不许露出框外的空白 */
+function clampView(v, nw, nh, f, zmax){
+  var kMin = coverScale(nw, nh, f.w, f.h);
+  var k = Math.min(Math.max(v.k, kMin), kMin * (zmax || 8));
+  var tx = Math.max(Math.min(v.tx, f.l), f.l + f.w - nw * k);
+  var ty = Math.max(Math.min(v.ty, f.t), f.t + f.h - nh * k);
+  return { tx: tx, ty: ty, k: k };
+}
+/** 居中、刚好盖满的初始视图 */
+function centerView(nw, nh, f){
+  var k = coverScale(nw, nh, f.w, f.h);
+  return { tx: f.l + (f.w - nw * k) / 2, ty: f.t + (f.h - nh * k) / 2, k: k };
+}
+/** 取景框里对应的原图区域 {sx, sy, sw, sh}（原图像素，落在图内） */
+function cropSource(v, nw, nh, f){
+  var sw = Math.min(nw, f.w / v.k), sh = Math.min(nh, f.h / v.k);
+  var sx = Math.min(Math.max(0, (f.l - v.tx) / v.k), nw - sw);
+  var sy = Math.min(Math.max(0, (f.t - v.ty) / v.k), nh - sh);
+  return { sx: sx, sy: sy, sw: sw, sh: sh };
+}
+/** 输出尺寸：严格按卡片比例（取景框取整带来的零点几像素误差不进成品），长边 ≤ max，不超过原图区域（不放大） */
+function cropOut(sw, sh, ratio, max){
+  var L = Math.max(1, Math.round(Math.min(max, Math.max(sw, sh))));
+  return ratio >= 1 ? { w: L, h: Math.max(1, Math.round(L / ratio)) } : { w: Math.max(1, Math.round(L * ratio)), h: L };
+}
+/** 反过来：从原图区域摆回视图（重新调整 / 转屏时保持原来框住的部分） */
+function viewFromSource(s, f){
+  var k = f.w / s.sw;
+  return { tx: f.l - s.sx * k, ty: f.t - s.sy * k, k: k };
+}
+
+var pure = { KINDS: KINDS, STATUS: STATUS, dateMs: dateMs, todayStr: todayStr, usedDays: usedDays, daysText: daysText, filterDevices: filterDevices, filterGames: filterGames, lineage: lineage, platformsOf: platformsOf, fitSize: fitSize,
+  CROP_RATIO: CROP_RATIO, cropFrame: cropFrame, coverScale: coverScale, clampView: clampView, centerView: centerView, cropSource: cropSource, viewFromSource: viewFromSource, cropOut: cropOut };
 if (typeof module !== 'undefined' && module.exports) { module.exports = pure; return; }
 G.SgxCurioItems = pure;
 
@@ -96,7 +142,8 @@ var T = isEn ? {
   photoFail: 'Saved, but the photo didn\'t upload.', notImage: 'That isn\'t a photo we can use.', tooLarge: 'The photo is too large.',
   delDevice: 'Delete this device?', delGame: 'Delete this game?', del: 'Delete', none: 'None', priv: 'Only you can see this',
   used: 'In use for', usedFor: 'Used for', bought: 'Bought', retiredOn: 'Retired', os: 'System', specs: 'Specs', acc: 'Accessories', notes: 'How it\'s been',
-  from: 'Replaced', to: 'Replaced by', platform: 'Platform', on: 'Played on', edition: 'Version', rating: 'Rating', review: 'Thoughts', stars: function(n){ return n + ' out of 5'; }
+  from: 'Replaced', to: 'Replaced by', platform: 'Platform', on: 'Played on', edition: 'Version', rating: 'Rating', review: 'Thoughts', stars: function(n){ return n + ' out of 5'; },
+  crop: 'Move and scale', cancel: 'Cancel', done: 'Done', adjust: 'Adjust photo'
 } : {
   all: '全部', active: '在用', retired: '已退役',
   kinds: { phone: '手机', tablet: '平板', laptop: '笔记本', desktop: '台式机', watch: '手表', audio: '耳机音箱', console: '游戏机', camera: '相机', other: '其他' },
@@ -107,7 +154,8 @@ var T = isEn ? {
   photoFail: '已保存，但照片没传上去。', notImage: '这张图用不了。', tooLarge: '照片太大了。',
   delDevice: '确定删除这台设备吗？', delGame: '确定删除这个游戏吗？', del: '删除', none: '无', priv: '仅自己可见',
   used: '已经用了', usedFor: '用了', bought: '购买', retiredOn: '退役', os: '系统', specs: '参数', acc: '配件', notes: '体验',
-  from: '换下了', to: '换成了', platform: '平台', on: '在哪台上玩', edition: '版本', rating: '评分', review: '评价', stars: function(n){ return n + ' 星'; }
+  from: '换下了', to: '换成了', platform: '平台', on: '在哪台上玩', edition: '版本', rating: '评分', review: '评价', stars: function(n){ return n + ' 星'; },
+  crop: '移动和缩放', cancel: '取消', done: '完成', adjust: '调整照片'
 };
 
 /* 类型图标（没有照片时显示） */
@@ -260,53 +308,161 @@ $('#it-view-edit').addEventListener('click', function(){
 $('#dv-list').addEventListener('click', function(e){ var b = e.target.closest('[data-dev]'); var d = b && findDev(Number(b.dataset.dev)); if (d) viewDevice(d); });
 $('#gm-list').addEventListener('click', function(e){ var b = e.target.closest('[data-game]'); var g = b && findGame(Number(b.dataset.game)); if (g) viewGame(g); });
 
-/* ---------- 照片：选图 → 缩到 1600 → webp（不支持就 jpeg） ---------- */
-function shrink(file){
+/* ---------- 照片：选图 → 移动和缩放 → 裁成长边 ≤1200 → webp（不支持就 jpeg） ---------- */
+var CROP_OUT = 1200, ZOOM_MAX = 8;
+function encode(c){
   return new Promise(function(resolve, reject){
-    var url = URL.createObjectURL(file);
-    var img = new Image();
-    img.onload = function(){
-      var s = fitSize(img.naturalWidth, img.naturalHeight, 1600);
-      var c = doc.createElement('canvas'); c.width = s.w; c.height = s.h;
-      c.getContext('2d').drawImage(img, 0, 0, s.w, s.h);
-      URL.revokeObjectURL(url);
-      c.toBlob(function(b){
-        if (b && b.type === 'image/webp') return resolve(b);
-        c.toBlob(function(j){ j ? resolve(j) : reject(Object.assign(new Error('encode'), { code: 'not-image' })); }, 'image/jpeg', 0.85);
-      }, 'image/webp', 0.85);
-    };
-    img.onerror = function(){ URL.revokeObjectURL(url); reject(Object.assign(new Error('decode'), { code: 'not-image' })); };
-    img.src = url;
+    c.toBlob(function(b){
+      if (b && b.type === 'image/webp') return resolve(b);
+      c.toBlob(function(j){ j ? resolve(j) : reject(Object.assign(new Error('encode'), { code: 'not-image' })); }, 'image/jpeg', 0.85);
+    }, 'image/webp', 0.85);
   });
 }
-/** 一个编辑弹层的照片状态：pending = 新选的 Blob，drop = 要去掉 */
+/* 全屏裁剪弹层（同主站头像的 .sgx-avc）：<dialog> 在最上层，盖过编辑弹层；取消 / Esc / 系统返回 = 什么都不改 */
+var crop = (function(){
+  var dlg = null, stage, pic, frame, doneBtn;
+  var nw = 0, nh = 0, ratio = 1, f = { l: 0, t: 0, w: 0, h: 0 }, v = { tx: 0, ty: 0, k: 1 };
+  var pts = {}, nPts = 0, url = '', cb = null, busy = false;
+  function layout(){
+    var w = stage.clientWidth, h = stage.clientHeight, fr = cropFrame(w, h, ratio);
+    f = { l: Math.round((w - fr.w) / 2), t: Math.round((h - fr.h) / 2 - 20), w: fr.w, h: fr.h };
+    frame.style.left = f.l + 'px'; frame.style.top = f.t + 'px'; frame.style.width = f.w + 'px'; frame.style.height = f.h + 'px';
+  }
+  function paint(){ v = clampView(v, nw, nh, f, ZOOM_MAX); pic.style.transform = 'translate(' + v.tx + 'px,' + v.ty + 'px) scale(' + v.k + ')'; }
+  function zoomAt(k2, px, py){
+    var kMin = coverScale(nw, nh, f.w, f.h), kk = Math.min(Math.max(k2, kMin), kMin * ZOOM_MAX);
+    v = { tx: px - (px - v.tx) * kk / v.k, ty: py - (py - v.ty) * kk / v.k, k: kk };
+    paint();
+  }
+  function pinch(){
+    var a = Object.keys(pts).map(function(id){ return pts[id]; });
+    return { x: (a[0].x + a[1].x) / 2, y: (a[0].y + a[1].y) / 2, d: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) };
+  }
+  function shut(){
+    if (dlg.open) dlg.close();
+    pts = {}; nPts = 0; cb = null; busy = false;
+    pic.removeAttribute('src');
+    if (url) { URL.revokeObjectURL(url); url = ''; }
+  }
+  function local(e){ var r = stage.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  function build(){
+    dlg = doc.createElement('dialog');
+    dlg.className = 'cu-crop';
+    dlg.setAttribute('aria-labelledby', 'cu-crop-title');
+    dlg.innerHTML = '<div class="cu-crop-stage"><img class="cu-crop-img" alt="" draggable="false"><div class="cu-crop-frame"></div></div>'
+      + '<div id="cu-crop-title" class="cu-crop-title">' + esc(T.crop) + '</div>'
+      + '<div class="cu-crop-bar"><button type="button" class="cu-crop-btn" data-crop-cancel>' + esc(T.cancel) + '</button>'
+      + '<button type="button" class="cu-crop-btn primary" data-crop-done>' + esc(T.done) + '</button></div>';
+    doc.body.appendChild(dlg);
+    stage = dlg.querySelector('.cu-crop-stage'); pic = dlg.querySelector('.cu-crop-img'); frame = dlg.querySelector('.cu-crop-frame');
+    doneBtn = dlg.querySelector('[data-crop-done]');
+    dlg.querySelector('[data-crop-cancel]').addEventListener('click', shut);
+    doneBtn.addEventListener('click', done);
+    /* Esc / 系统返回 = 取消；Esc 不再冒泡到 curio.js，免得把下面的编辑弹层也关了 */
+    dlg.addEventListener('cancel', function(e){ e.preventDefault(); shut(); });
+    dlg.addEventListener('keydown', function(e){ if (e.key === 'Escape') e.stopPropagation(); });
+    stage.addEventListener('pointerdown', function(e){
+      try { stage.setPointerCapture(e.pointerId); } catch (x) {}
+      if (!pts[e.pointerId]) nPts++;
+      pts[e.pointerId] = local(e);
+    });
+    stage.addEventListener('pointermove', function(e){
+      var p = pts[e.pointerId];
+      if (!p) return;
+      var q = local(e);
+      if (nPts === 1) { v = { tx: v.tx + q.x - p.x, ty: v.ty + q.y - p.y, k: v.k }; p.x = q.x; p.y = q.y; paint(); return; }
+      if (nPts === 2) {
+        var a = pinch(); p.x = q.x; p.y = q.y; var b = pinch();
+        v = { tx: v.tx + b.x - a.x, ty: v.ty + b.y - a.y, k: v.k };
+        if (a.d > 0) zoomAt(v.k * b.d / a.d, b.x, b.y); else paint();
+      }
+    });
+    function up(e){ if (pts[e.pointerId]) { delete pts[e.pointerId]; nPts--; } }
+    stage.addEventListener('pointerup', up);
+    stage.addEventListener('pointercancel', up);
+    stage.addEventListener('wheel', function(e){ e.preventDefault(); var q = local(e); zoomAt(v.k * Math.exp(-e.deltaY * 0.0015), q.x, q.y); }, { passive: false });
+    G.addEventListener('resize', function(){
+      if (!dlg.open || !nw) return;
+      var s = cropSource(v, nw, nh, f);
+      layout(); v = viewFromSource(s, f); paint();
+    });
+  }
+  function done(){
+    if (busy || !nw) return;
+    busy = true; doneBtn.disabled = true;
+    var s = cropSource(v, nw, nh, f), o = cropOut(s.sw, s.sh, ratio, CROP_OUT);
+    var c = doc.createElement('canvas'); c.width = o.w; c.height = o.h;
+    var g = c.getContext('2d'); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+    g.drawImage(pic, s.sx, s.sy, s.sw, s.sh, 0, 0, o.w, o.h);
+    var fn = cb;
+    encode(c).then(function(b){ shut(); if (fn) fn(b, s); }, function(e){ shut(); toast(errText(e)); });
+  }
+  /** 打开：file = 原图；kind 定比例；src = 上次框住的原图区域（重新调整时带上）；onDone(blob, src) */
+  function openCrop(file, kind, src, onDone){
+    if (!dlg) build();
+    if (url) URL.revokeObjectURL(url);
+    ratio = CROP_RATIO[kind] || 1; cb = onDone; busy = false; nw = nh = 0; pts = {}; nPts = 0;
+    doneBtn.disabled = true;
+    url = URL.createObjectURL(file);
+    pic.onload = function(){
+      nw = pic.naturalWidth; nh = pic.naturalHeight;
+      if (!nw || !nh) { shut(); toast(T.notImage); return; }
+      pic.style.width = nw + 'px'; pic.style.height = nh + 'px';
+      if (!dlg.open) dlg.showModal();
+      layout();
+      v = src ? viewFromSource(src, f) : centerView(nw, nh, f);
+      paint();
+      doneBtn.disabled = false;
+    };
+    pic.onerror = function(){ shut(); toast(T.notImage); };
+    pic.src = url;
+  }
+  return { open: openCrop };
+})();
+var ADJ = '<span class="it-photo-adj" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg></span>';
+/** 一个编辑弹层的照片状态：pending = 裁好的 Blob，drop = 要去掉；file / src = 原图和框住的区域（保存前可重新调整） */
 function photoBox(prefix, kind){
-  var st = { pending: null, drop: false, had: false, prevUrl: '' };
+  var st = { pending: null, drop: false, had: false, prevUrl: '', file: null, src: null };
   var prev = $('#' + prefix + '-photo-prev'), input = $('#' + prefix + '-photo'), del = $('#' + prefix + '-photo-del');
   function show(src){
     if (st.prevUrl) { URL.revokeObjectURL(st.prevUrl); st.prevUrl = ''; }
-    prev.innerHTML = src ? '<img src="' + esc(src) + '" alt="">' : icon(kind === 'game' ? 'game' : 'other', 32);
+    var adj = !!(src && st.pending && st.file);
+    prev.innerHTML = src ? '<img src="' + esc(src) + '" alt="">' + (adj ? ADJ : '') : icon(kind === 'game' ? 'game' : 'other', 32);
+    prev.disabled = !adj;
+    if (adj) { prev.setAttribute('aria-label', T.adjust); prev.removeAttribute('aria-hidden'); }
+    else { prev.removeAttribute('aria-label'); prev.setAttribute('aria-hidden', 'true'); }
     del.classList.toggle('hidden', !src);
+  }
+  function cropped(file){
+    return function(b, src){
+      st.pending = b; st.drop = false; st.file = file; st.src = src;
+      var u = URL.createObjectURL(b);
+      show(u); st.prevUrl = u;
+    };
   }
   input.addEventListener('change', function(){
     var f = input.files && input.files[0];
     input.value = '';
-    if (!f) return;
-    shrink(f).then(function(b){
-      st.pending = b; st.drop = false;
-      var u = URL.createObjectURL(b);
-      show(u); st.prevUrl = u;
-    }).catch(function(e){ toast(errText(e)); });
+    if (f) crop.open(f, kind, null, cropped(f));
   });
-  del.addEventListener('click', function(){ st.pending = null; st.drop = st.had; show(''); });
+  /* 刚选的图还没保存：点缩略图回到裁剪，接着上次框住的位置调 */
+  prev.addEventListener('click', function(){ if (st.pending && st.file) crop.open(st.file, kind, st.src, cropped(st.file)); });
+  del.addEventListener('click', function(){ st.pending = null; st.file = null; st.src = null; st.drop = st.had; show(''); });
   return {
-    reset: function(item, has){ st.pending = null; st.drop = false; st.had = !!has; show(has ? photoUrl(kind, item.id) : ''); },
+    reset: function(item, has){ st.pending = null; st.file = null; st.src = null; st.drop = false; st.had = !!has; show(has ? photoUrl(kind, item.id) : ''); },
     /** 保存后跑：有新图就传，有「去掉」就删；返回 Promise<是否出错> */
     commit: function(id){
       var p = st.pending ? send('POST', '/api/photo?kind=' + kind + '&id=' + id, st.pending, st.pending.type)
         : st.drop ? send('DELETE', '/api/photo?kind=' + kind + '&id=' + id) : null;
       if (!p) return Promise.resolve(false);
-      return p.then(function(){ ver[kind + id] = Date.now(); return false; }, function(e){ if (e.sgxLocked) throw e; return true; });
+      var has = !!st.pending;
+      return p.then(function(){
+        ver[kind + id] = Date.now();
+        /* 本地列表跟上：第一次传图 / 去掉照片后卡片立刻换，不用等刷新（列表是保存时 op 回的，那时照片还没传） */
+        var it = kind === 'game' ? findGame(id) : findDev(id);
+        if (it) it[kind === 'game' ? 'cover' : 'photo'] = has;
+        return false;
+      }, function(e){ if (e.sgxLocked) throw e; return true; });
     }
   };
 }
