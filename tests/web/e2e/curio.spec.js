@@ -2,8 +2,8 @@
 // - 顶栏：九宫格 · 分段滑块 发现 / 设备 / 游戏 · 右圆分享（2026-10-24 留言板撤了；没有搜索栏、没有页脚）；抽屉同主站（字标 + 头像、主站 / 奇趣（书签+星）/ 日刻 / 博客、分隔线、底栏搜索框），奇趣是当前项
 // - 访客：没有「收藏」和「⋯」；格子点开新标签页；图标取不到显示首字母
 // - 分类条筛选 + hash；页签切换 + hash + 左右滑
-// - 设备 / 游戏：访客只读；主人新建（照片缩图后上传）、详情、编辑、删除；使用天数
-// - 主人：私密带锁；收藏 → 填网址自动补全 → 保存发 link.add；长按格子编辑、删除要确认；管理分类；导入发原文
+// - 设备 / 游戏：访客只读；管理员新建（照片缩图后上传）、详情、编辑、删除；使用天数
+// - 管理员：私密带锁；收藏 → 填网址自动补全 → 保存发 link.add；长按格子编辑、删除要确认；管理分类；导入发原文
 // - 英文页
 const { test, expect } = require('@playwright/test');
 
@@ -19,13 +19,13 @@ const CATS = [
 ];
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 
-async function mock(page, owner) {
-  let cats = owner
+async function mock(page, admin) {
+  let cats = admin
     ? JSON.parse(JSON.stringify(CATS))
     : JSON.parse(JSON.stringify(CATS)).filter((c) => !c.private).map((c) => ({ ...c, links: c.links.filter((l) => !l.private) })).filter((c) => c.links.length);
   const calls = [];
   await page.route('**/avatar/**', (r) => r.fulfill({ status: 200, contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"/>' }));
-  await page.route('**/api/session-check', (r) => r.fulfill({ json: { ok: true } }));
+  await page.route('**/api/lock-session-check', (r) => r.fulfill({ json: { ok: true } }));
   await page.route('**/api/icon**', (r) => (new URL(r.request().url()).searchParams.get('id') === '11'
     ? r.fulfill({ status: 200, contentType: 'image/png', body: PNG })
     : r.fulfill({ status: 404, json: { ok: false } })));
@@ -33,7 +33,7 @@ async function mock(page, owner) {
   await page.route('**/api/import**', async (r) => {
     calls.push({ url: r.request().url(), body: r.request().postData(), type: r.request().headers()['content-type'] });
     cats = cats.concat({ id: 9, name: { zh: '工具', en: '' }, private: true, links: [{ id: 91, url: 'https://t.example/', name: { zh: 'T', en: '' }, desc: { zh: '', en: '' }, icon: '', private: true }] });
-    return r.fulfill({ json: { ok: true, found: 3, added: 1, skipped: 2, invalid: 0, cats_added: 1, backup: 'imports/x.html', owner: true, cats } });
+    return r.fulfill({ json: { ok: true, found: 3, added: 1, skipped: 2, invalid: 0, cats_added: 1, backup: 'imports/x.html', admin: true, cats } });
   });
   let devices = [
     { id: 1, name: 'Galaxy S23', kind: 'phone', bought_at: '2023-03-01', retired_at: '2025-03-01', replaced_by: 2, os: 'One UI 6', specs: '8GB / 256GB', accessories: '', notes: '小屏好用', photo: false, private: false },
@@ -44,7 +44,7 @@ async function mock(page, owner) {
     { id: 7, title: '塞尔达传说 王国之泪', platform: 'Switch', device_id: 0, edition: '实体版', status: 'done', rating: 5, review: '神作', cover: false, private: false },
     { id: 8, title: 'Hades II', platform: 'PC', device_id: 0, edition: '', status: 'playing', rating: 0, review: '', cover: false, private: false },
   ];
-  if (!owner) devices = devices.filter((d) => !d.private);
+  if (!admin) devices = devices.filter((d) => !d.private);
   let nextId = 100;
   await page.route('**/api/photo**', async (r) => {
     const req = r.request();
@@ -54,7 +54,7 @@ async function mock(page, owner) {
   });
   await page.route('**/api/items**', async (r) => {
     const req = r.request();
-    if (req.method() === 'GET') return r.fulfill({ json: { ok: true, owner, devices, games } });
+    if (req.method() === 'GET') return r.fulfill({ json: { ok: true, admin, devices, games } });
     const body = req.postDataJSON();
     calls.push(body);
     let id;
@@ -62,17 +62,17 @@ async function mock(page, owner) {
     if (body.op === 'device.edit') devices = devices.map((d) => (d.id === body.id ? { ...d, ...body, op: undefined } : d));
     if (body.op === 'device.del') devices = devices.filter((d) => d.id !== body.id);
     if (body.op === 'game.add') { id = nextId++; games.push({ cover: false, ...body, id, op: undefined }); }
-    return r.fulfill({ json: { ok: true, owner: true, id, devices, games } });
+    return r.fulfill({ json: { ok: true, admin: true, id, devices, games } });
   });
   await page.route('**/api/links**', async (r) => {
     const req = r.request();
-    if (req.method() === 'GET') return r.fulfill({ json: { ok: true, owner, cats } });
+    if (req.method() === 'GET') return r.fulfill({ json: { ok: true, admin, cats } });
     const body = req.postDataJSON();
     calls.push(body);
     if (body.op === 'link.add') cats[0].links.push({ id: 99, url: body.url, name: body.name, desc: body.desc, icon: '', private: !!body.private });
     if (body.op === 'link.del') cats.forEach((c) => { c.links = c.links.filter((l) => l.id !== body.id); });
     if (body.op === 'cat.add') cats.push({ id: 50, name: body.name, private: false, links: [] });
-    return r.fulfill({ json: { ok: true, owner: true, cats } });
+    return r.fulfill({ json: { ok: true, admin: true, cats } });
   });
   return calls;
 }
@@ -158,7 +158,7 @@ test('分类条筛选并写 hash，刷新还在', async ({ page }) => {
   await expect(page.locator('.cu-tile')).toHaveCount(2);
 });
 
-test('主人：私密带锁、空分类也在；收藏 → 自动填写 → 保存发 link.add', async ({ page }) => {
+test('管理员：私密带锁、空分类也在；收藏 → 自动填写 → 保存发 link.add', async ({ page }) => {
   const calls = await mock(page, true);
   await page.goto('/');
   await expect(page.locator('#cu-fab')).toBeVisible();
@@ -180,7 +180,7 @@ test('主人：私密带锁、空分类也在；收藏 → 自动填写 → 保�
   await expect(page.locator('#bk-toast')).toHaveText('已保存');
 });
 
-test('主人：长按格子编辑，删除要确认', async ({ page }) => {
+test('管理员：长按格子编辑，删除要确认', async ({ page }) => {
   const calls = await mock(page, true);
   await page.goto('/');
   const tile = page.locator('.cu-tile[data-id="21"]');
@@ -199,7 +199,7 @@ test('主人：长按格子编辑，删除要确认', async ({ page }) => {
   await expect(page.locator('.cu-tile[data-id="21"]')).toHaveCount(0);
 });
 
-test('主人：管理分类新建；导入把文件原文发给 /api/import（默认私密）并显示结果', async ({ page }) => {
+test('管理员：管理分类新建；导入把文件原文发给 /api/import（默认私密）并显示结果', async ({ page }) => {
   const calls = await mock(page, true);
   await page.goto('/');
   await page.locator('#cu-menu-btn').click();
@@ -295,7 +295,7 @@ test('访客：设备 / 游戏只读（没有新建按钮、详情没有编辑�
   await expect(page.locator('#gm-fab')).toBeHidden();
 });
 
-test('主人：添加设备（类型、日期、照片缩图转 webp 上传），详情里编辑成退役并选换成的那台；删除要确认', async ({ page }) => {
+test('管理员：添加设备（类型、日期、照片缩图转 webp 上传），详情里编辑成退役并选换成的那台；删除要确认', async ({ page }) => {
   const calls = await mock(page, true);
   await page.goto('/#devices');
   await expect(page.locator('#dv-list .it-card')).toHaveCount(3);
@@ -359,7 +359,7 @@ test('主人：添加设备（类型、日期、照片缩图转 webp 上传）�
   await expect(page.locator('#dv-list [data-dev="3"]')).toHaveCount(0);
 });
 
-test('主人：添加游戏（状态、评分、平台联想、关联设备）', async ({ page }) => {
+test('管理员：添加游戏（状态、评分、平台联想、关联设备）', async ({ page }) => {
   const calls = await mock(page, true);
   await page.goto('/#games');
   await page.locator('#gm-fab').click();
@@ -392,7 +392,7 @@ async function halves(page, w, h) {
 }
 const frameBox = (page) => page.locator('.cu-crop-frame').boundingBox();
 
-test('主人：游戏封面「移动和缩放」——框是卡片的 3:4；拖动换位置；取消不改；点缩略图重新调整；Esc 只关裁剪', async ({ page }) => {
+test('管理员：游戏封面「移动和缩放」——框是卡片的 3:4；拖动换位置；取消不改；点缩略图重新调整；Esc 只关裁剪', async ({ page }) => {
   const calls = await mock(page, true);
   await page.goto('/#games');
   await page.locator('#gm-list [data-game="8"]').click();

@@ -4,7 +4,7 @@
 // 表（D1 styrigx-curio，迁移 migrations/0003_devices_games.sql；ITEM_SCHEMA 只兜底全新的库，两边一致，测试核对）：
 //   devices  设备：名字、类型、购买 / 退役日期、换成了哪台（replaced_by）、系统版本、参数、配件、体验、照片（R2 key）、私密、排序
 //   games    游戏：名字、平台、关联设备（device_id，可空）、版本、状态（想玩 / 在玩 / 通关 / 搁置）、评分 0–5、评价、封面（R2 key）、私密、排序
-// 只存一种语言（主人自己写的话），不像收藏那样分中英文。
+// 只存一种语言（管理员自己写的话），不像收藏那样分中英文。
 // 私密：访客看不到私密的条目；游戏关联的设备是私密的，访客拿到的游戏里 device_id 置 0（不泄露那台设备）。
 // 照片的上传 / 读取 / 删除在 src/api/photo.js；删条目时顺手删 R2 里的照片（applyItemOp 返回 {removed} 交给调用方删）。
 
@@ -178,21 +178,21 @@ function rowGame(r) {
 
 /**
  * 读设备和游戏：{devices:[...], games:[...]}（照片只给有没有，图走 /api/photo）。
- * owner=false（访客）：私密的不给；设备的 replaced_by、游戏的 device_id 指向访客看不到的设备时置 0。
+ * admin=false（访客）：私密的不给；设备的 replaced_by、游戏的 device_id 指向访客看不到的设备时置 0。
  * 一个 batch 读 devices + games（跨两套数据：游戏要按设备可见性处理 device_id，要同一快照），
  * 所以用主表 devices 那套的绑定 D1_DEVICES 执行（同一个库）。
  * @param {any} db  D1_DEVICES
- * @param {boolean} owner
+ * @param {boolean} admin
  */
-export async function listItems(db, owner) {
+export async function listItems(db, admin) {
   const [ds, gs] = await db.batch([
     db.prepare('SELECT * FROM devices ORDER BY pos, id'),
     db.prepare('SELECT * FROM games ORDER BY pos, id'),
   ]);
-  const devices = (ds.results || []).filter((r) => owner || !r.private).map(rowDevice);
+  const devices = (ds.results || []).filter((r) => admin || !r.private).map(rowDevice);
   const seen = new Set(devices.map((d) => d.id));
   for (const d of devices) if (d.replaced_by && !seen.has(d.replaced_by)) d.replaced_by = 0;
-  const games = (gs.results || []).filter((r) => owner || !r.private).map(rowGame);
+  const games = (gs.results || []).filter((r) => admin || !r.private).map(rowGame);
   for (const g of games) if (g.device_id && !seen.has(g.device_id)) g.device_id = 0;
   return { devices, games };
 }

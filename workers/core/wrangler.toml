@@ -4,7 +4,7 @@
 # Pages（styrigx-curio，配置见 web/wrangler.toml）只放静态文件；页面的会话检查在主站鉴权网关。
 #
 # 安全：
-# - 本 Worker 不持任何钥匙。会话交给鉴权网关验（服务绑定 AUTH → SessionVerifier）。
+# - 本 Worker 不持任何钥匙。会话交给鉴权网关验（服务绑定 AUTH → AuthVerifier）。
 # - 全站搜索：本 Worker 自己把收藏 / 设备 / 游戏写进 KV styrigx-search-index 的 site:curio（src/search-index.js）。
 # - workers_dev = false、preview_urls = false：只通过 curio.styrigx.com 的路由访问（它连的是正式 D1 / R2）。
 
@@ -18,7 +18,7 @@ preview_urls = false
 enabled = true
 head_sampling_rate = 1
 
-# 路由：curio.styrigx.com/api/*。网关另有更精确的 curio.styrigx.com/api/session-check（精确路径优先），
+# 路由：curio.styrigx.com/api/*。网关另有更精确的 curio.styrigx.com/api/lock-session-check（精确路径优先），
 # 页面路径登记在网关（styrigx-space 仓库 workers/auth-gateway/wrangler.toml），这里只管接口。
 [[routes]]
 pattern = "curio.styrigx.com/api/*"
@@ -51,11 +51,11 @@ database_id = "26ae9cd2-43c9-4bc0-b558-b35560ed9d7c"
 binding = "R2_PHOTOS"
 bucket_name = "styrigx-curio-core"
 
-# 验票：主站鉴权网关的 RPC 入口（session）。
+# 验票：主站鉴权网关的 RPC 入口 AuthVerifier（lockSession）。
 [[services]]
 binding = "AUTH"
 service = "styrigx-auth-gateway"
-entrypoint = "SessionVerifier"
+entrypoint = "AuthVerifier"
 
 # 全站搜索索引：KV styrigx-search-index（主站 styrigx-search-index Worker 读）。本 Worker 只写自己那条 site:curio：
 # 改内容的写接口成功后重建（ctx.waitUntil），下面的 Cron 每小时兜底一次。格式见 src/search-index.js。

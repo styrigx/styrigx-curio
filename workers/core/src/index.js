@@ -5,9 +5,9 @@
  * 本 Worker 不持任何钥匙：会话交给主站鉴权网关验（服务绑定 AUTH，见 src/api/_auth.js）。
  *
  * 请求顺序：
- *   1. 所有 /api/*：先问网关会话（owner、visitor 都可）；无效 → 401 JSON（不 302，fetch 不跟跳转）。没有公开接口。
- *   2. 按路由表交给 src/api/<路径>.js；写操作自己再要求 owner + 同源
- * /api/session-check 由网关的更精确路由直接回答，到不了这里；万一到了，同样问网关。
+ *   1. 所有 /api/*：先问网关会话（admin、visitor 都可）；无效 → 401 JSON（不 302，fetch 不跟跳转）。没有公开接口。
+ *   2. 按路由表交给 src/api/<路径>.js；写操作自己再要求 admin + 同源
+ * /api/lock-session-check 由网关的更精确路由直接回答，到不了这里；万一到了，同样问网关。
  * 不在路由表里的路径 → 404；方法不支持 → 405。
  *
  * 全站搜索：改内容的写接口成功后 ctx.waitUntil 重建 KV site:curio；Cron 每小时兜底（scheduled），见 src/search-index.js。
@@ -80,7 +80,7 @@ export async function handle(request, env, ctx) {
   const path = url.pathname;
   if (!path.startsWith('/api/')) return json(404, { ok: false, error: 'not-found' });
 
-  if (routeKey(path) === '/api/session-check') {
+  if (routeKey(path) === '/api/lock-session-check') {
     const role = await verifySession(request, env);
     return role ? json(200, { ok: true }) : json(401, { ok: false });
   }

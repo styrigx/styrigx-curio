@@ -7,7 +7,7 @@
 //   imports 导入记录：每次导入的原始文件存在 R2（imports/<时间>-<哈希>.html），这里记 key 和结果
 //
 // 中英文：名字 / 简介各两份；一种留空时前端显示另一种，所以只填一种也行。
-// 私密：分类或收藏任一私密，访客就看不到这条（主人全看得到）。从浏览器导入的默认私密。
+// 私密：分类或收藏任一私密，访客就看不到这条（管理员全看得到）。从浏览器导入的默认私密。
 
 export const SCHEMA = [
   "CREATE TABLE IF NOT EXISTS cats (id INTEGER PRIMARY KEY AUTOINCREMENT, name_zh TEXT NOT NULL DEFAULT '', name_en TEXT NOT NULL DEFAULT '', private INTEGER NOT NULL DEFAULT 0, pos INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL DEFAULT 0)",
@@ -165,11 +165,11 @@ export async function ensureSchema(db) {
 
 /**
  * 读全部收藏，组成 [{id, name:{zh,en}, private, links:[{id,url,name,desc,icon,private}]}]。
- * owner=false（访客）：私密分类整个不给，私密收藏不给，空分类不给。
+ * admin=false（访客）：私密分类整个不给，私密收藏不给，空分类不给。
  * @param {any} db
- * @param {boolean} owner
+ * @param {boolean} admin
  */
-export async function listAll(db, owner) {
+export async function listAll(db, admin) {
   const [cats, links] = await db.batch([
     db.prepare('SELECT id, name_zh, name_en, private FROM cats ORDER BY pos, id'),
     db.prepare('SELECT id, cat_id, url, name_zh, name_en, desc_zh, desc_en, icon, private FROM links ORDER BY pos, id'),
@@ -178,18 +178,18 @@ export async function listAll(db, owner) {
   const byId = new Map();
   const out = [];
   for (const r of cats.results || []) {
-    if (!owner && r.private) continue;
+    if (!admin && r.private) continue;
     const c = { id: r.id, name: { zh: r.name_zh, en: r.name_en }, private: !!r.private, links: [] };
     byId.set(r.id, c);
     out.push(c);
   }
   for (const r of links.results || []) {
-    if (!owner && r.private) continue;
+    if (!admin && r.private) continue;
     const c = byId.get(r.cat_id);
     if (!c) continue;
     c.links.push({ id: r.id, url: r.url, name: { zh: r.name_zh, en: r.name_en }, desc: { zh: r.desc_zh, en: r.desc_en }, icon: r.icon, private: !!r.private });
   }
-  return owner ? out : out.filter((c) => c.links.length > 0);
+  return admin ? out : out.filter((c) => c.links.length > 0);
 }
 
 export async function one(db, sql, ...args) {

@@ -2,9 +2,9 @@
  *
  * - 「发现」页签（顶栏分段滑块，切换在 curio-tabs.js）：分类筛选条（全部 + 每个分类，hash #c/<分类 id>，只用 replaceState）。
  *   顶栏没有搜索栏（2026-10-22 起）；filterCats 仍支持搜索词，留给以后。
- * - 按分类分组的格子：图标（/api/icon?id=，R2 缓存；取不到显示首字母方块）、名字、简介；私密的带小锁（只有主人看得到私密的）。
+ * - 按分类分组的格子：图标（/api/icon?id=，R2 缓存；取不到显示首字母方块）、名字、简介；私密的带小锁（只有管理员看得到私密的）。
  *   点格子在新标签页打开网址。
- * - 主人：右下角「收藏」新建；长按格子（或键盘 Enter 以外的 E 键）编辑；分类条右边「⋯」：管理分类 / 导入浏览器书签 / 导出书签。
+ * - 管理员：右下角「收藏」新建；长按格子（或键盘 Enter 以外的 E 键）编辑；分类条右边「⋯」：管理分类 / 导入浏览器书签 / 导出书签。
  *   编辑弹层：网址（「自动填写」抓标题、简介、图标）、名字、英文名和英文简介、简介、分类（可就地新建）、自定义图标、仅自己可见、上移 / 下移、删除。
  * - 中英文：名字、简介各两份，当前语言那份为空时显示另一份。
  *
@@ -44,7 +44,7 @@ function catHash(id){ return id ? '#c/' + id : ''; }
 
 /**
  * 筛选：cat 为 0 是全部；q 按空白切成多个词，每个词都要出现在名字（两种语言）、简介（两种语言）或网址里。
- * 返回新的分类数组（不改原数组）。有搜索词时只留有命中的分类；没有搜索词时空分类也保留（主人要能看到、往里加；访客拿到的本来就没有空分类）。
+ * 返回新的分类数组（不改原数组）。有搜索词时只留有命中的分类；没有搜索词时空分类也保留（管理员要能看到、往里加；访客拿到的本来就没有空分类）。
  */
 function filterCats(cats, q, cat){
   var words = String(q || '').toLowerCase().split(/\s+/).filter(Boolean);
@@ -102,7 +102,7 @@ var isEn = doc.documentElement.lang === 'en';
 var T = isEn ? {
   all: 'All', add: 'Keep a link', edit: 'Edit', saved: 'Saved.', deleted: 'Deleted.', failed: 'Something went wrong. Please try again.',
   needUrl: 'Enter a valid web address.', needName: 'Give it a name.', needCat: 'Pick a category.', dup: 'You already kept this one.',
-  priv: 'Only you can see this', emptyOwner: 'Nothing kept yet. Tap "Keep" or import your browser bookmarks.', emptyVisitor: 'Nothing here yet.',
+  priv: 'Only you can see this', emptyAdmin: 'Nothing kept yet. Tap "Keep" or import your browser bookmarks.', emptyVisitor: 'Nothing here yet.',
   noMatch: 'Nothing matches.', filling: 'Fetching…', fillFail: 'Couldn\'t read that page. Fill it in yourself.',
   delLink: 'Delete this link?', delCat: 'Delete this category?', notEmpty: 'Empty the category first.', del: 'Delete',
   importing: 'Importing…', notBookmarks: 'That isn\'t a bookmarks file.', emptyFile: 'No links in that file.', tooLarge: 'The file is too large.',
@@ -111,7 +111,7 @@ var T = isEn ? {
 } : {
   all: '全部', add: '收藏', edit: '编辑', saved: '已保存', deleted: '已删除', failed: '出了点问题，请再试一次。',
   needUrl: '填一个有效的网址。', needName: '起个名字。', needCat: '选一个分类。', dup: '这个网址已经收藏过了。',
-  priv: '仅自己可见', emptyOwner: '还没有收藏。点「收藏」，或者导入浏览器书签。', emptyVisitor: '这里还空着。',
+  priv: '仅自己可见', emptyAdmin: '还没有收藏。点「收藏」，或者导入浏览器书签。', emptyVisitor: '这里还空着。',
   noMatch: '没有找到。', filling: '正在读取…', fillFail: '读不到这个网页，手动填一下吧。',
   delLink: '确定删除这条收藏吗？', delCat: '确定删除这个分类吗？', notEmpty: '先把分类清空。', del: '删除',
   importing: '正在导入…', notBookmarks: '这不是书签文件。', emptyFile: '文件里没有网址。', tooLarge: '文件太大了。',
@@ -121,7 +121,7 @@ var T = isEn ? {
 
 var $ = function(s){ return doc.querySelector(s); };
 var cats = [];
-var owner = false;
+var admin = false;
 var loaded = false;
 var cat = 0;
 var query = '';
@@ -175,7 +175,7 @@ function onLongPress(root, sel, fn){
   });
   root.addEventListener('pointermove', function(e){ if (Math.abs(e.clientX - x0) > 10 || Math.abs(e.clientY - y0) > 10) clearTimeout(timer); });
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(function(t){ root.addEventListener(t, function(){ clearTimeout(timer); }); });
-  root.addEventListener('contextmenu', function(e){ if (owner && e.target.closest && e.target.closest(sel)) e.preventDefault(); });
+  root.addEventListener('contextmenu', function(e){ if (admin && e.target.closest && e.target.closest(sel)) e.preventDefault(); });
   root.addEventListener('click', function(e){ if (fired) { fired = false; e.preventDefault(); e.stopImmediatePropagation(); } }, true);
 }
 
@@ -213,7 +213,7 @@ function findLink(id){
 function tileHTML(l, c){
   var name = pick(l.name, isEn) || hostOf(l.url);
   var desc = pick(l.desc, isEn) || hostOf(l.url);
-  var locked = owner && (l.private || c.private);
+  var locked = admin && (l.private || c.private);
   return '<a class="cu-tile" href="' + esc(l.url) + '" target="_blank" rel="noopener noreferrer" data-id="' + l.id + '" title="' + esc(desc + ' · ' + l.url) + '">'
     + '<span class="cu-ic"><span class="cu-ic-letter" aria-hidden="true">' + esc(initial(name, l.url)) + '</span>'
     + '<img src="/api/icon?id=' + l.id + '" alt="" width="48" height="48" loading="lazy" decoding="async" onerror="this.remove()"></span>'
@@ -224,9 +224,9 @@ function tileHTML(l, c){
 function renderChips(){
   var html = '<button type="button" role="tab" class="cu-chip" aria-selected="' + (cat === 0) + '" data-cat="0">' + esc(T.all) + '</button>';
   cats.forEach(function(c){
-    if (!owner && !c.links.length) return;
+    if (!admin && !c.links.length) return;
     html += '<button type="button" role="tab" class="cu-chip" aria-selected="' + (cat === c.id) + '" data-cat="' + c.id + '">'
-      + (owner && c.private ? '<span class="cu-chip-lock">' + LOCK + '</span>' : '') + esc(pick(c.name, isEn)) + '</button>';
+      + (admin && c.private ? '<span class="cu-chip-lock">' + LOCK + '</span>' : '') + esc(pick(c.name, isEn)) + '</button>';
   });
   $('#cu-chips').innerHTML = html;
   var sel = $('#cu-chips [aria-selected="true"]');
@@ -239,13 +239,13 @@ function render(){
   var list = $('#cu-list');
   list.innerHTML = shown.map(function(c){
     return '<section class="cu-sec" data-cat="' + c.id + '"><h2 class="cu-sec-h"><span>' + esc(pick(c.name, isEn)) + '</span>'
-      + (owner && c.private ? '<span class="cu-lock-inline" title="' + esc(T.priv) + '">' + LOCK + '</span>' : '')
+      + (admin && c.private ? '<span class="cu-lock-inline" title="' + esc(T.priv) + '">' + LOCK + '</span>' : '')
       + '<span class="cu-sec-n">' + esc(T.count(c.links.length)) + '</span></h2>'
       + '<div class="cu-grid">' + c.links.map(function(l){ return tileHTML(l, c); }).join('') + '</div></section>';
   }).join('');
   var empty = $('#cu-empty');
   var none = loaded && !countLinks(shown);
-  empty.textContent = query ? T.noMatch : owner ? T.emptyOwner : T.emptyVisitor;
+  empty.textContent = query ? T.noMatch : admin ? T.emptyAdmin : T.emptyVisitor;
   empty.classList.toggle('hidden', !none);
 }
 
@@ -356,14 +356,14 @@ $('#f-up').addEventListener('click', function(){ moveLink(-1); });
 $('#f-down').addEventListener('click', function(){ moveLink(1); });
 $('#cu-fab').addEventListener('click', function(){ openEdit(null); });
 
-/* 主人：长按格子编辑；键盘：格子上按 E 编辑 */
+/* 管理员：长按格子编辑；键盘：格子上按 E 编辑 */
 onLongPress($('#cu-list'), '.cu-tile', function(el){
-  if (!owner) return;
+  if (!admin) return;
   var hit = findLink(Number(el.dataset.id));
   if (hit) { try { navigator.vibrate && navigator.vibrate(12); } catch (e) {} openEdit(hit.link, hit.cat.id); }
 });
 $('#cu-list').addEventListener('keydown', function(e){
-  if (!owner || (e.key !== 'e' && e.key !== 'E')) return;
+  if (!admin || (e.key !== 'e' && e.key !== 'E')) return;
   var el = e.target.closest && e.target.closest('.cu-tile');
   var hit = el && findLink(Number(el.dataset.id));
   if (hit) { e.preventDefault(); openEdit(hit.link, hit.cat.id); }
@@ -455,12 +455,12 @@ $('#imp-go').addEventListener('click', function(){
 function boot(){
   cat = parseHash(G.location.hash);
   getJSON('/api/links').then(function(j){
-    owner = !!j.owner;
+    admin = !!j.admin;
     cats = j.cats || [];
     loaded = true;
-    doc.documentElement.classList.toggle('cu-owner', owner);
-    $('#cu-fab').classList.toggle('hidden', !owner);
-    $('#cu-menu-btn').classList.toggle('hidden', !owner);
+    doc.documentElement.classList.toggle('cu-admin', admin);
+    $('#cu-fab').classList.toggle('hidden', !admin);
+    $('#cu-menu-btn').classList.toggle('hidden', !admin);
     $('#cu-loading').classList.add('hidden');
     render();
   }).catch(function(e){

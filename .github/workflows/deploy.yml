@@ -154,7 +154,7 @@ jobs:
           ok=0
           check /api/links 401 X-Curio-Runtime || ok=1
           check '/api/icon?id=1' 401 X-Curio-Runtime || ok=1
-          check /api/session-check 401 X-SGX-Runtime || ok=1
+          check /api/lock-session-check 401 X-SGX-Runtime || ok=1
           exit $ok
 
   deploy-pages:

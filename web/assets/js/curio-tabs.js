@@ -3,7 +3,7 @@
  * - hash：发现 = 无或 #c/<分类 id>（curio.js 管），#devices，#games。只用 replaceState，切页签不加历史。
  * - 切页签：面板 hidden + inert；滑块 --seg-pos；<html data-cu-tab>（CSS 据此只露当前页签的「收藏 / 设备 / 游戏」按钮）。
  *   每个页签记住自己的滚动位置；点当前页签回顶部。键盘 ← → Home End。左右滑（横向 ≥ 70px、明显比竖向多）也能切。
- * - 右下角按钮：发现 = #cu-fab（curio.js 按是否主人显示），设备 = #dv-fab，游戏 = #gm-fab（curio-items.js 标 data-owner）。
+ * - 右下角按钮：发现 = #cu-fab（curio.js 按是否管理员显示），设备 = #dv-fab，游戏 = #gm-fab（curio-items.js 标 data-admin）。
  */
 (function(){
 "use strict";
@@ -35,8 +35,8 @@ var scrolls = {};
 function reduced(){ return doc.documentElement.classList.contains('reduced-motion') || (G.matchMedia && G.matchMedia('(prefers-reduced-motion: reduce)').matches); }
 function fabs(){
   var dv = doc.getElementById('dv-fab'), gm = doc.getElementById('gm-fab');
-  if (dv) dv.classList.toggle('hidden', !(tab === 'devices' && dv.dataset.owner));
-  if (gm) gm.classList.toggle('hidden', !(tab === 'games' && gm.dataset.owner));
+  if (dv) dv.classList.toggle('hidden', !(tab === 'devices' && dv.dataset.admin));
+  if (gm) gm.classList.toggle('hidden', !(tab === 'games' && gm.dataset.admin));
 }
 function setTab(next, opts){
   opts = opts || {};

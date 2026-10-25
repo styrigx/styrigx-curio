@@ -1,8 +1,8 @@
 {{ define "main" }}
 {{ $isEn := or (eq .Lang "en") (hasPrefix .RelPermalink "/en/") }}
 {{/* 奇趣首页：三个页签（顶栏分段滑块，curio-tabs.js 切换；左右滑也能切）。
-   发现（cu-pane-finds，curio.js 画）：分类筛选条 + 按分类分组的收藏格子。主人：右下角「收藏」，长按格子编辑；「⋯」里有 管理分类 / 导入 / 导出。
-   设备（cu-pane-devices）、游戏（cu-pane-games）：curio-items.js 画，卡片 + 状态筛选条；点卡片看详情，主人在详情里编辑；右下角「设备」「游戏」新建。
+   发现（cu-pane-finds，curio.js 画）：分类筛选条 + 按分类分组的收藏格子。管理员：右下角「收藏」，长按格子编辑；「⋯」里有 管理分类 / 导入 / 导出。
+   设备（cu-pane-devices）、游戏（cu-pane-games）：curio-items.js 画，卡片 + 状态筛选条；点卡片看详情，管理员在详情里编辑；右下角「设备」「游戏」新建。
    访客只读、只看公开的。数据全走 curio.styrigx.com/api/*（接口 Worker，见 workers/core）。 */}}
 <main id="cu-main" class="cu-wrap">
  <div id="cu-panes">
@@ -34,7 +34,7 @@
  </div>
 </main>
 
-{{/* ===== 设备 / 游戏（主人，右下角浮动按钮，跟着页签换） ===== */}}
+{{/* ===== 设备 / 游戏（管理员，右下角浮动按钮，跟着页签换） ===== */}}
 <button id="dv-fab" type="button" class="cu-fab it-fab hidden">
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>{{ if $isEn }}Device{{ else }}设备{{ end }}
 </button>
@@ -42,7 +42,7 @@
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>{{ if $isEn }}Game{{ else }}游戏{{ end }}
 </button>
 
-{{/* ===== 详情（设备 / 游戏共用，curio-items.js 填内容；主人有「编辑」） ===== */}}
+{{/* ===== 详情（设备 / 游戏共用，curio-items.js 填内容；管理员有「编辑」） ===== */}}
 <div id="it-view-wrap" class="bk-overlay fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="it-view-title">
   <div class="bk-overlay-backdrop absolute inset-0" data-close="it-view"></div>
   <div class="bk-panel text-m-on-surface shadow-2xl">
@@ -56,7 +56,7 @@
   </div>
 </div>
 
-{{/* ===== 设备：添加 / 编辑（主人） ===== */}}
+{{/* ===== 设备：添加 / 编辑（管理员） ===== */}}
 <div id="dv-edit-wrap" class="bk-overlay fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="dv-edit-title">
   <div class="bk-overlay-backdrop absolute inset-0" data-close="dv-edit"></div>
   <div class="bk-panel text-m-on-surface shadow-2xl">
@@ -106,7 +106,7 @@
   </div>
 </div>
 
-{{/* ===== 游戏：添加 / 编辑（主人） ===== */}}
+{{/* ===== 游戏：添加 / 编辑（管理员） ===== */}}
 <div id="gm-edit-wrap" class="bk-overlay fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="gm-edit-title">
   <div class="bk-overlay-backdrop absolute inset-0" data-close="gm-edit"></div>
   <div class="bk-panel text-m-on-surface shadow-2xl">
@@ -147,12 +147,12 @@
   </div>
 </div>
 
-{{/* ===== 收藏（主人，右下角浮动按钮） ===== */}}
+{{/* ===== 收藏（管理员，右下角浮动按钮） ===== */}}
 <button id="cu-fab" type="button" class="cu-fab hidden">
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>{{ if $isEn }}Keep{{ else }}收藏{{ end }}
 </button>
 
-{{/* ===== 更多（主人）：管理分类 / 导入 / 导出 ===== */}}
+{{/* ===== 更多（管理员）：管理分类 / 导入 / 导出 ===== */}}
 <div id="menu-wrap" class="bk-overlay fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="menu-title">
   <div class="bk-overlay-backdrop absolute inset-0" data-close="menu"></div>
   <div class="bk-panel bk-dialog text-m-on-surface shadow-2xl">
@@ -166,7 +166,7 @@
   </div>
 </div>
 
-{{/* ===== 收藏 / 编辑弹层（主人） ===== */}}
+{{/* ===== 收藏 / 编辑弹层（管理员） ===== */}}
 <div id="edit-wrap" class="bk-overlay fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="edit-title">
   <div class="bk-overlay-backdrop absolute inset-0" data-close="edit"></div>
   <div class="bk-panel text-m-on-surface shadow-2xl">
@@ -220,7 +220,7 @@
   </div>
 </div>
 
-{{/* ===== 管理分类（主人）：改名、私密、上下移、删（空的才能删）、新建 ===== */}}
+{{/* ===== 管理分类（管理员）：改名、私密、上下移、删（空的才能删）、新建 ===== */}}
 <div id="cats-wrap" class="bk-overlay fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="cats-title">
   <div class="bk-overlay-backdrop absolute inset-0" data-close="cats"></div>
   <div class="bk-panel text-m-on-surface shadow-2xl">
@@ -241,7 +241,7 @@
   </div>
 </div>
 
-{{/* ===== 导入浏览器书签（主人） ===== */}}
+{{/* ===== 导入浏览器书签（管理员） ===== */}}
 <div id="import-wrap" class="bk-overlay fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="import-title">
   <div class="bk-overlay-backdrop absolute inset-0" data-close="import"></div>
   <div class="bk-panel bk-dialog text-m-on-surface shadow-2xl">

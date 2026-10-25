@@ -1,7 +1,7 @@
 // 锁屏同步测试（#8 恢复 + #5 权限规则）
 // 覆盖：web/assets/js/sgx-lock-sync.js — 401 处理规则（isLockSignal / checkSession / apiFetch），
 //      网络错误不 reload（fail open）
-// 服务端（session-check、页面 no-store、302 锁屏）在主站鉴权网关，测试在 styrigx-space 仓库；
+// 服务端（lock-session-check、页面 no-store、302 锁屏）在主站鉴权网关，测试在 styrigx-space 仓库；
 // 接口鉴权见 tests/workers/worker.test.mjs。
 // 运行：node tests/web/lock-sync.test.mjs
 
@@ -30,7 +30,7 @@ function test(name, fn) {
 console.log('sgx-lock-sync isLockSignal:');
 await test('数据接口 401 → 视为已锁定', () => {
   assert.equal(sgx.isLockSignal('/api/links', 401), true);
-  assert.equal(sgx.isLockSignal('/api/session-check', 401), true);
+  assert.equal(sgx.isLockSignal('/api/lock-session-check', 401), true);
   assert.equal(sgx.isLockSignal('https://curio.styrigx.com/api/links', 401), true);
 });
 await test('非 401 状态 → 不 reload', () => {
