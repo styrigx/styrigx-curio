@@ -1,14 +1,14 @@
 // workers/core/src/api/import.js
 // POST /api/import[?private=0]   body：浏览器导出的书签文件原文（.html，最多 8 MB）
 //
-// 只有主人；必须同源。步骤：
+// 只有管理员；必须同源。步骤：
 //   1. 先把原始文件原样存进 R2：imports/<UTC 时间>-<sha256 前 12 位>.html（存不进去就整个不导入：备份优先，书签不能再丢）
 //   2. 解析（_netscape.js）：文件夹路径 → 分类名；已有同名分类就并进去，没有就新建
 //   3. 网址已经收藏过的跳过（库里按网址去重；同一个文件里重复的也只留一个）
 //   4. 一次性写入（json_each 批量插入，D1 免费版每次请求的查询数有上限，不能一条一条插）
 //   5. imports 表记一笔
 // 默认导入成私密（浏览器书签里什么都有）；?private=0 导入成公开。新建的分类也跟着这个设置。
-// 返回 {ok:true, found, added, skipped, invalid, cats_added, backup:<R2 key>, owner:true, cats:[...]}
+// 返回 {ok:true, found, added, skipped, invalid, cats_added, backup:<R2 key>, admin:true, cats:[...]}
 // 400 not-bookmarks（不是书签文件）/ empty（一条网址都没有）；409 limit（超出 5000 条，一条都不写）；413 too-large；503 backup（R2 不可用）
 import { json, err, methodNotAllowed } from './_lib.js';
 import { guardWrite } from './_write.js';
@@ -121,7 +121,7 @@ export async function onRequestPost(context) {
     invalid: parsed.invalid,
     cats_added: newCats.length,
     backup: key,
-    owner: true,
+    admin: true,
     cats: await listAll(db, true),
   });
 }

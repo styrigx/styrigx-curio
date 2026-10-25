@@ -11,7 +11,7 @@
  *   - 设备（devices）：title = 名字；subtitle =「设备 · 类型 · 系统」；text = 系统、参数、配件、体验；url = #devices
  *   - 游戏（games）：title = 名字；subtitle =「游戏 · 平台 · 状态」；text = 版本、评价；url = #games
  *   - text 最多 2000 字，只参与匹配，搜索 Worker 不回给前端
- *   - private：访客看不到的标 private:true，只给站长搜到。规则同 _store.js 的 listAll、_items.js 的 listItems：
+ *   - private：访客看不到的标 private:true，只给管理员搜到。规则同 _store.js 的 listAll、_items.js 的 listItems：
  *     收藏是「分类或收藏任一私密」，设备 / 游戏看自己的 private
  *
  * 什么时候写：

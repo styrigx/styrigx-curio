@@ -94,7 +94,7 @@ export async function onRequestGet(context) {
     .prepare('SELECT l.url, l.icon, l.private AS lp, c.private AS cp FROM links l LEFT JOIN cats c ON c.id = l.cat_id WHERE l.id = ?1')
     .bind(id)
     .first();
-  if (!link || (role !== 'owner' && (link.lp || link.cp))) return err('not-found', 404);
+  if (!link || (role !== 'admin' && (link.lp || link.cp))) return err('not-found', 404);
   const plan = await iconPlan(link);
   if (!plan.key) return err('not-found', 404);
 

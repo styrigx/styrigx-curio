@@ -1,9 +1,9 @@
 // workers/core/src/api/photo.js
 // 设备照片 / 游戏封面（R2 R2_PHOTOS：photos/<device|game>/<id>-<时间>.<webp|jpg|png>）。
 //   GET    /api/photo?kind=device|game&id=N   任何有效会话；访客拿不到私密条目的图（404，同不存在）。没照片 404。
-//   POST   /api/photo?kind=…&id=N             owner + 同源；body 是图片本身（Content-Type image/webp|jpeg|png，看头几个字节核对），≤ 3 MB。
+//   POST   /api/photo?kind=…&id=N             admin + 同源；body 是图片本身（Content-Type image/webp|jpeg|png，看头几个字节核对），≤ 3 MB。
 //                                             换照片：先写新的、再改 D1、最后删旧的。→ {ok:true}
-//   DELETE /api/photo?kind=…&id=N             owner + 同源；删照片并清空 D1 里的 key。→ {ok:true}
+//   DELETE /api/photo?kind=…&id=N             admin + 同源；删照片并清空 D1 里的 key。→ {ok:true}
 // 前端上传前在浏览器里缩到长边 1600、转 webp，所以一般只有几百 KB。
 // 响应头：Cache-Control private, max-age=31536000, immutable（key 带时间，换照片 = 换地址，前端用 ?v= 区分）。
 import { err, json, methodNotAllowed } from './_lib.js';
@@ -41,7 +41,7 @@ export async function onRequestGet(context) {
   if (!db || !env.R2_PHOTOS) return err('server', 503);
   await ensureItemSchema(db);
   const row = await db.prepare(`SELECT ${t.K.photo} AS photo, private FROM ${t.K.table} WHERE id = ?1`).bind(t.id).first();
-  if (!row || !row.photo || (role !== 'owner' && row.private)) return err('not-found', 404);
+  if (!row || !row.photo || (role !== 'admin' && row.private)) return err('not-found', 404);
   const obj = await env.R2_PHOTOS.get(row.photo);
   if (!obj) return err('not-found', 404);
   const type = (obj.httpMetadata && obj.httpMetadata.contentType) || 'image/webp';

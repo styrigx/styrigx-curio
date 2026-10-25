@@ -41,11 +41,11 @@ styrigx-curio/
 | `src/index.js` | 入口：全部 `/api/*` 先问网关会话（没有公开接口） |
 | `src/search-index.js` | 全站搜索索引：收藏 / 设备 / 游戏 → KV `site:curio`（改内容的写接口成功后重建 + Cron 每小时兜底；私密的标 `private`） |
 | `src/routes.js` | 路由表（与 `src/api/` 一一对应，测试核对） |
-| `src/api/links.js` | `GET` 列表（访客只有公开的），`POST {op}` 增删改排序（主人 + 同源） |
+| `src/api/links.js` | `GET` 列表（访客只有公开的），`POST {op}` 增删改排序（管理员 + 同源） |
 | `src/api/import.js` | 导入浏览器书签：先备份原文到 R2，再 `json_each` 批量写入 |
 | `src/api/export.js` | 导出书签文件 |
 | `src/api/preview.js` | 抓网页标题、简介、图标 |
-| `src/api/items.js` | 设备和游戏：`GET` 列表，`POST {op}` 增删改排序（主人 + 同源；删条目连照片删） |
+| `src/api/items.js` | 设备和游戏：`GET` 列表，`POST {op}` 增删改排序（管理员 + 同源；删条目连照片删） |
 | `src/api/photo.js` | 设备照片 / 游戏封面：读、传、删（R2 `photos/`） |
 | `src/api/icon.js` | 图标：R2 缓存，没有就现抓（只抓公网地址），抓不到记「没有」7 天 |
 | `src/api/_store.js` | 收藏的表结构、校验、读写 |

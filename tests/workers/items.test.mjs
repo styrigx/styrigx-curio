@@ -47,17 +47,17 @@ function makeR2() {
     async delete(key) { m.delete(key); },
   };
 }
-const auth = (role) => ({ async session() { return role ? { ok: true, role } : { ok: false }; } });
+const auth = (role) => ({ async lockSession() { return role ? { ok: true, role } : { ok: false }; } });
 const ORIGIN = 'https://curio.styrigx.com';
 function call(p, { role = null, db, r2, method = 'GET', body, origin = ORIGIN, type } = {}) {
-  const headers = { Cookie: 'sgx-verified=x' };
+  const headers = { Cookie: 'sgx-lock-session=x' };
   if (origin) headers.Origin = origin;
   if (body !== undefined) headers['Content-Type'] = type || 'application/json';
   const b = body === undefined ? undefined : body instanceof Uint8Array || typeof body === 'string' ? body : JSON.stringify(body);
   return worker.fetch(new Request(ORIGIN + p, { method, headers, body: b }), { AUTH: auth(role), D1_FINDS: db, D1_DEVICES: db, D1_GAMES: db, R2_PHOTOS: r2 }, { waitUntil() {} });
 }
 const env = () => ({ db: makeD1(), r2: makeR2() });
-const post = (e, body, role = 'owner') => call('/api/items', { ...e, role, method: 'POST', body });
+const post = (e, body, role = 'admin') => call('/api/items', { ...e, role, method: 'POST', body });
 const get = async (e, role) => (await call('/api/items', { ...e, role })).json();
 
 const WEBP = new Uint8Array([0x52, 0x49, 0x46, 0x46, 0x10, 0, 0, 0, 0x57, 0x45, 0x42, 0x50, 0x56, 0x50, 0x38, 0x20]);
@@ -67,9 +67,9 @@ test('未登录 401；写：非同源 403、访客 403；坏 JSON 400', async ()
   const e = env();
   for (const p of ['/api/items', '/api/photo?kind=device&id=1']) assert.equal((await call(p, e)).status, 401, p);
   const body = { op: 'device.add', name: 'S24' };
-  assert.equal((await call('/api/items', { ...e, role: 'owner', method: 'POST', body, origin: 'https://evil.com' })).status, 403);
+  assert.equal((await call('/api/items', { ...e, role: 'admin', method: 'POST', body, origin: 'https://evil.com' })).status, 403);
   assert.equal((await post(e, body, 'visitor')).status, 403);
-  assert.equal((await call('/api/items', { ...e, role: 'owner', method: 'POST', body: '{x', type: 'application/json' })).status, 400);
+  assert.equal((await call('/api/items', { ...e, role: 'admin', method: 'POST', body: '{x', type: 'application/json' })).status, 400);
   assert.equal((await call('/api/photo?kind=device&id=1', { ...e, role: 'visitor', method: 'POST', body: WEBP, type: 'image/webp' })).status, 403);
 });
 
@@ -116,7 +116,7 @@ test('增改删排序；关联设备必须存在；删设备时 replaced_by / de
   assert.equal((await post(e, { op: 'device.del', id: s25 })).status, 404);
 });
 
-test('读：访客看不到私密条目，指向私密设备的关联置 0；主人全看到', async () => {
+test('读：访客看不到私密条目，指向私密设备的关联置 0；管理员全看到', async () => {
   const e = env();
   const a = (await (await post(e, { op: 'device.add', name: '公开机', kind: 'phone' })).json()).id;
   const b = (await (await post(e, { op: 'device.add', name: '私密机', private: true })).json()).id;
@@ -124,11 +124,11 @@ test('读：访客看不到私密条目，指向私密设备的关联置 0；主
   await post(e, { op: 'game.add', title: '公开游戏', device_id: b });
   await post(e, { op: 'game.add', title: '私密游戏', private: true });
   const v = await get(e, 'visitor');
-  assert.equal(v.owner, false);
+  assert.equal(v.admin, false);
   assert.deepEqual(v.devices.map((d) => [d.name, d.replaced_by]), [['公开机', 0]]);
   assert.deepEqual(v.games.map((g) => [g.title, g.device_id]), [['公开游戏', 0]]);
-  const o = await get(e, 'owner');
-  assert.equal(o.owner, true);
+  const o = await get(e, 'admin');
+  assert.equal(o.admin, true);
   assert.equal(o.devices.length, 2);
   assert.equal(o.games.length, 2);
   assert.equal(o.games[0].device_id, b);
@@ -138,11 +138,11 @@ test('照片：只收 webp/jpeg/png、≤ 3 MB；换照片删旧的；访客拿�
   const e = env();
   const id = (await (await post(e, { op: 'device.add', name: 'S24' })).json()).id;
   const pid = (await (await post(e, { op: 'device.add', name: '私', private: true })).json()).id;
-  const up = (i, body, type = 'image/webp') => call('/api/photo?kind=device&id=' + i, { ...e, role: 'owner', method: 'POST', body, type });
+  const up = (i, body, type = 'image/webp') => call('/api/photo?kind=device&id=' + i, { ...e, role: 'admin', method: 'POST', body, type });
   assert.equal((await up(id, new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"/>'), 'image/svg+xml')).status, 400);
   assert.equal((await up(id, new Uint8Array(PH.PHOTO_MAX_BYTES + 1))).status, 413);
   assert.equal((await up(999, WEBP)).status, 404);
-  assert.equal((await call('/api/photo?kind=cat&id=1', { ...e, role: 'owner' })).status, 400);
+  assert.equal((await call('/api/photo?kind=cat&id=1', { ...e, role: 'admin' })).status, 400);
   assert.equal((await up(id, WEBP)).status, 200);
   assert.equal(e.r2.m.size, 1);
   const first = [...e.r2.m.keys()][0];
@@ -157,18 +157,18 @@ test('照片：只收 webp/jpeg/png、≤ 3 MB；换照片删旧的；访客拿�
   assert.equal((await get(e, 'visitor')).devices[0].photo, true);
   assert.equal((await up(pid, WEBP)).status, 200);
   assert.equal((await call('/api/photo?kind=device&id=' + pid, { ...e, role: 'visitor' })).status, 404);
-  assert.equal((await call('/api/photo?kind=device&id=' + pid, { ...e, role: 'owner' })).status, 200);
+  assert.equal((await call('/api/photo?kind=device&id=' + pid, { ...e, role: 'admin' })).status, 200);
   assert.equal(e.r2.m.size, 2);
   await post(e, { op: 'device.del', id: pid });
   assert.equal(e.r2.m.size, 1, '删条目连照片删');
-  const d = await call('/api/photo?kind=device&id=' + id, { ...e, role: 'owner', method: 'DELETE' });
+  const d = await call('/api/photo?kind=device&id=' + id, { ...e, role: 'admin', method: 'DELETE' });
   assert.equal(d.status, 200);
   assert.equal(e.r2.m.size, 0);
-  assert.equal((await get(e, 'owner')).devices[0].photo, false);
+  assert.equal((await get(e, 'admin')).devices[0].photo, false);
   /* 游戏封面同一个接口 */
   const gid = (await (await post(e, { op: 'game.add', title: 'Hades' })).json()).id;
-  assert.equal((await call('/api/photo?kind=game&id=' + gid, { ...e, role: 'owner', method: 'POST', body: WEBP, type: 'image/webp' })).status, 200);
-  assert.equal((await get(e, 'owner')).games[0].cover, true);
+  assert.equal((await call('/api/photo?kind=game&id=' + gid, { ...e, role: 'admin', method: 'POST', body: WEBP, type: 'image/webp' })).status, 200);
+  assert.equal((await get(e, 'admin')).games[0].cover, true);
 });
 
 test('迁移 0003 连跑两次不报错，和 ITEM_SCHEMA 建出来的表一样', () => {
@@ -191,8 +191,8 @@ test('绑定：设备走 D1_DEVICES、游戏走 D1_GAMES（同一个库）；wra
     return { ...d, prepare: (sql) => { note(sql); return d.prepare(sql); } };
   };
   const envOf = (role) => ({ AUTH: auth(role), D1_FINDS: tag('D1_FINDS'), D1_DEVICES: tag('D1_DEVICES'), D1_GAMES: tag('D1_GAMES'), R2_PHOTOS: makeR2() });
-  const req = (p, method = 'GET', body) => new Request(ORIGIN + p, { method, headers: { Cookie: 'sgx-verified=x', Origin: ORIGIN, 'Content-Type': 'application/json' }, body: body && JSON.stringify(body) });
-  const E = envOf('owner');
+  const req = (p, method = 'GET', body) => new Request(ORIGIN + p, { method, headers: { Cookie: 'sgx-lock-session=x', Origin: ORIGIN, 'Content-Type': 'application/json' }, body: body && JSON.stringify(body) });
+  const E = envOf('admin');
   assert.equal((await worker.fetch(req('/api/items', 'POST', { op: 'device.add', name: 'S24' }), E, { waitUntil() {} })).status, 200);
   assert.equal((await worker.fetch(req('/api/items', 'POST', { op: 'game.add', title: 'Zelda' }), E, { waitUntil() {} })).status, 200);
   seen.D1_GAMES.clear(); // 第一次调用时这个绑定跑过建表 batch（devices + games），之后不再跑

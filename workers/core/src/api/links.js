@@ -1,8 +1,8 @@
 // workers/core/src/api/links.js
-// GET  /api/links   任何有效会话：owner 拿全部（含私密），visitor 只拿公开的（私密分类 / 私密收藏 / 空分类都不给）。
-//                   返回 {ok:true, owner, cats:[{id, name:{zh,en}, private, links:[{id, url, name, desc, icon, private}]}]}
-// POST /api/links   owner + 同源：body {op, ...}（操作见 _store.js 的 parseOp）。
-//                   成功 → {ok:true, owner:true, cats:[...]}（直接带回最新的全部收藏，前端整页重画）
+// GET  /api/links   任何有效会话：admin 拿全部（含私密），visitor 只拿公开的（私密分类 / 私密收藏 / 空分类都不给）。
+//                   返回 {ok:true, admin, cats:[{id, name:{zh,en}, private, links:[{id, url, name, desc, icon, private}]}]}
+// POST /api/links   admin + 同源：body {op, ...}（操作见 _store.js 的 parseOp）。
+//                   成功 → {ok:true, admin:true, cats:[...]}（直接带回最新的全部收藏，前端整页重画）
 //                   400 参数不对；404 不存在；409 not-empty / mismatch / limit / duplicate
 import { json, err, methodNotAllowed } from './_lib.js';
 import { verifySession } from './_auth.js';
@@ -21,9 +21,9 @@ export async function onRequestGet(context) {
   if (!role) return err('unauthorized', 401);
   const d = db(env);
   if (!d) return err('server', 503);
-  const owner = role === 'owner';
+  const admin = role === 'admin';
   await ensureSchema(d);
-  return json({ ok: true, owner, cats: await listAll(d, owner) });
+  return json({ ok: true, admin, cats: await listAll(d, admin) });
 }
 
 export async function onRequestPost(context) {
@@ -38,7 +38,7 @@ export async function onRequestPost(context) {
   await ensureSchema(d);
   const e = await applyOp(d, o);
   if (e) return err(e, STATUS[e] || 400);
-  return json({ ok: true, owner: true, cats: await listAll(d, true) });
+  return json({ ok: true, admin: true, cats: await listAll(d, true) });
 }
 
 export function onRequest() {

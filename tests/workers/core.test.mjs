@@ -1,8 +1,8 @@
 // styrigx-curio-core（workers/core）：
 // - 路由表与 src/api 接口文件一一对应；没有公开接口，全部先问网关；网关出错 → 500 不是 401
-// - 收藏：访客只看公开（私密分类 / 私密收藏 / 空分类都不给），主人看全部；写：非同源 403、访客 403、校验、增改删排序
+// - 收藏：访客只看公开（私密分类 / 私密收藏 / 空分类都不给），管理员看全部；写：非同源 403、访客 403、校验、增改删排序
 // - 导入：先备份原文到 R2（R2 不可用就不导入）、文件夹 → 分类、按网址去重、默认私密、超上限一条不写、记录 imports
-// - 导出：Netscape HTML，只给主人 + 同源
+// - 导出：Netscape HTML，只给管理员 + 同源
 // - 图标：R2 缓存命中直接回；没缓存现抓并存；抓不到存「没有」标记；访客拿不到私密收藏的图标；内网地址不抓
 // - 迁移 0001 + 0002 在 SQLite 上跑两次不报错，种子和 data/seed.json 一致；SCHEMA 与迁移一致
 // - wrangler.toml：不开 workers.dev，只挂 curio.styrigx.com/api/*，D1 + R2 + 网关服务绑定，不持钥匙
@@ -70,7 +70,7 @@ function makeR2(fail = false) {
 }
 function auth(role = null, throws = false) {
   return {
-    async session() {
+    async lockSession() {
       if (throws) throw new Error('down');
       return role ? { ok: true, role } : { ok: false, reason: 'no-cookie' };
     },
@@ -79,13 +79,13 @@ function auth(role = null, throws = false) {
 const CTX = { waitUntil() {} };
 const ORIGIN = 'https://curio.styrigx.com';
 function call(p, { role = null, db = makeD1(), r2 = makeR2(), method = 'GET', body, origin = ORIGIN, throws = false, headers: extra = {} } = {}) {
-  const headers = { Cookie: 'sgx-verified=x', ...extra };
+  const headers = { Cookie: 'sgx-lock-session=x', ...extra };
   if (origin) headers.Origin = origin;
   if (body !== undefined && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
   const req = new Request(ORIGIN + p, { method, headers, body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body) });
   return worker.fetch(req, { AUTH: auth(role, throws), D1_FINDS: db, D1_DEVICES: db, D1_GAMES: db, R2_PHOTOS: r2 }, CTX);
 }
-const op = async (db, body, role = 'owner') => call('/api/links', { role, db, method: 'POST', body });
+const op = async (db, body, role = 'admin') => call('/api/links', { role, db, method: 'POST', body });
 const list = async (db, role) => (await call('/api/links', { role, db })).json();
 
 test('路由表与 src/api 接口文件一一对应', () => {
@@ -100,21 +100,24 @@ test('没有公开接口：未登录一律 401，带运行标记；不存在 404
     assert.equal(r.headers.get('X-Curio-Runtime'), 'worker');
   }
   assert.equal((await call('/api/import', { method: 'POST', body: 'x' })).status, 401);
-  assert.equal((await call('/api/nope', { role: 'owner' })).status, 404);
+  assert.equal((await call('/api/nope', { role: 'admin' })).status, 404);
   assert.equal((await call('/api/links', { throws: true })).status, 500);
-  assert.equal((await call('/api/session-check')).status, 401);
-  assert.equal((await call('/api/session-check', { role: 'visitor' })).status, 200);
+  assert.equal((await call('/api/lock-session-check')).status, 401);
+  assert.equal((await call('/api/lock-session-check', { role: 'visitor' })).status, 200);
+  // 网关只回 admin / visitor；别的角色名（如旧的 owner）一律当会话无效
+  assert.equal((await call('/api/links', { role: 'owner' })).status, 401);
+  assert.equal((await call('/api/lock-session-check', { role: 'owner' })).status, 401);
 });
 
 test('写：非同源 403、没 Origin 403、访客 403', async () => {
   const body = { op: 'cat.add', name: 'x' };
-  assert.equal((await call('/api/links', { role: 'owner', method: 'POST', body, origin: 'https://evil.com' })).status, 403);
-  assert.equal((await call('/api/links', { role: 'owner', method: 'POST', body, origin: null })).status, 403);
+  assert.equal((await call('/api/links', { role: 'admin', method: 'POST', body, origin: 'https://evil.com' })).status, 403);
+  assert.equal((await call('/api/links', { role: 'admin', method: 'POST', body, origin: null })).status, 403);
   const v = await call('/api/links', { role: 'visitor', method: 'POST', body });
   assert.equal(v.status, 403);
   assert.equal((await v.json()).error, 'role');
-  assert.equal((await call('/api/links', { role: 'owner', method: 'POST', body: '{oops' })).status, 400);
-  assert.equal((await call('/api/links', { role: 'owner', method: 'DELETE' })).status, 405);
+  assert.equal((await call('/api/links', { role: 'admin', method: 'POST', body: '{oops' })).status, 400);
+  assert.equal((await call('/api/links', { role: 'admin', method: 'DELETE' })).status, 405);
 });
 
 test('parseOp：网址只收 http/https、不收带账号密码的；名字必填、截断、去控制字符', () => {
@@ -180,7 +183,7 @@ test('增、改、换分类、排序、删；重复网址 409；分类非空不�
   assert.deepEqual(j.cats.map((c) => c.id), [c2.id]);
 });
 
-test('读：访客只看公开（私密分类整个不给、私密收藏不给、空分类不给），主人全看到且 owner=true', async () => {
+test('读：访客只看公开（私密分类整个不给、私密收藏不给、空分类不给），管理员全看到且 admin=true', async () => {
   const db = makeD1();
   await op(db, { op: 'cat.add', name: '公开' });
   await op(db, { op: 'cat.add', name: '私密', private: true });
@@ -189,11 +192,11 @@ test('读：访客只看公开（私密分类整个不给、私密收藏不给�
   await op(db, { op: 'link.add', cat: 1, url: 'https://q.com', name: 'Q', private: true });
   await op(db, { op: 'link.add', cat: 2, url: 'https://r.com', name: 'R' });
   const v = await list(db, 'visitor');
-  assert.equal(v.owner, false);
+  assert.equal(v.admin, false);
   assert.deepEqual(v.cats.map((c) => c.name.zh), ['公开']);
   assert.deepEqual(v.cats[0].links.map((l) => l.url), ['https://p.com/']);
-  const o = await list(db, 'owner');
-  assert.equal(o.owner, true);
+  const o = await list(db, 'admin');
+  assert.equal(o.admin, true);
   assert.deepEqual(o.cats.map((c) => c.links.length), [2, 1, 0]);
 });
 
@@ -262,7 +265,7 @@ test('导出的文件再解析回来，分类、网址、名字都一样', () =>
 });
 
 /* ================= 导入 ================= */
-const imp = (db, r2, body, q = '', role = 'owner') => call('/api/import' + q, { role, db, r2, method: 'POST', body, headers: { 'Content-Type': 'text/html' } });
+const imp = (db, r2, body, q = '', role = 'admin') => call('/api/import' + q, { role, db, r2, method: 'POST', body, headers: { 'Content-Type': 'text/html' } });
 
 test('导入：先备份原文到 R2；文件夹 → 分类，已有同名分类并进去；按网址去重；默认私密；记录 imports', async () => {
   const db = makeD1();
@@ -315,7 +318,7 @@ test('导入：R2 不可用就一条不写；不是书签文件 400；空的 400
   assert.equal((await (await imp(db, makeR2(), '<html><p>hello</p></html>')).json()).error, 'not-bookmarks');
   assert.equal((await (await imp(db, makeR2(), '<!DOCTYPE NETSCAPE-Bookmark-file-1><DL><p></DL>')).json()).error, 'empty');
   assert.equal((await imp(db, makeR2(), CHROME, '', 'visitor')).status, 403);
-  assert.equal((await call('/api/import', { role: 'owner', db, method: 'POST', body: CHROME, origin: 'https://evil.com' })).status, 403);
+  assert.equal((await call('/api/import', { role: 'admin', db, method: 'POST', body: CHROME, origin: 'https://evil.com' })).status, 403);
 });
 
 test('导入：超过 5000 条上限一条不写', async () => {
@@ -339,19 +342,19 @@ test('导入：一千多条一次写完（json_each 分块），顺序保持', a
 
 /* ================= 导出 ================= */
 
-test('导出：主人 + 同源（直接点链接时认 Sec-Fetch-Site）；访客 403；文件能被再解析', async () => {
+test('导出：管理员 + 同源（直接点链接时认 Sec-Fetch-Site）；访客 403；文件能被再解析', async () => {
   const db = makeD1();
   await op(db, { op: 'cat.add', name: { zh: '工具', en: 'Tools' } });
   await op(db, { op: 'link.add', cat: 1, url: 'https://a.example', name: 'A', private: true });
-  const r = await call('/api/export', { role: 'owner', db, origin: null, headers: { 'Sec-Fetch-Site': 'same-origin' } });
+  const r = await call('/api/export', { role: 'admin', db, origin: null, headers: { 'Sec-Fetch-Site': 'same-origin' } });
   assert.equal(r.status, 200);
   assert.match(r.headers.get('Content-Disposition'), /^attachment; filename="curio-\d{8}\.html"$/);
   const parsed = N.parseBookmarks(await r.text());
   assert.deepEqual(parsed.items.map((i) => [i.cat, i.url]), [['工具', 'https://a.example/']]);
-  const en = N.parseBookmarks(await (await call('/api/export?lang=en', { role: 'owner', db })).text());
+  const en = N.parseBookmarks(await (await call('/api/export?lang=en', { role: 'admin', db })).text());
   assert.equal(en.items[0].cat, 'Tools');
   assert.equal((await call('/api/export', { role: 'visitor', db })).status, 403);
-  assert.equal((await call('/api/export', { role: 'owner', db, origin: null, headers: { 'Sec-Fetch-Site': 'cross-site' } })).status, 403);
+  assert.equal((await call('/api/export', { role: 'admin', db, origin: null, headers: { 'Sec-Fetch-Site': 'cross-site' } })).status, 403);
 });
 
 /* ================= 图标 ================= */
@@ -376,9 +379,9 @@ test('图标：没缓存现抓（apple-touch-icon → favicon.ico），存 R2 �
   await op(db, { op: 'link.add', cat: 1, url: 'https://site.example/b', name: 'B' });
   const f = fakeFetch({ 'https://site.example/favicon.ico': () => new Response(PNG, { headers: { 'Content-Type': 'application/octet-stream' } }) });
   const ctxFetch = { waitUntil() {} };
-  const req = (id, role = 'owner') => new Request(ORIGIN + '/api/icon?id=' + id, { headers: { Cookie: 'x' } });
+  const req = (id, role = 'admin') => new Request(ORIGIN + '/api/icon?id=' + id, { headers: { Cookie: 'x' } });
   const env = (role) => ({ AUTH: auth(role), D1_FINDS: db, D1_DEVICES: db, D1_GAMES: db, R2_PHOTOS: r2 });
-  const r = await I.onRequestGet({ request: req(1), env: env('owner'), fetchImpl: f, ...ctxFetch });
+  const r = await I.onRequestGet({ request: req(1), env: env('admin'), fetchImpl: f, ...ctxFetch });
   assert.equal(r.status, 200);
   assert.equal(r.headers.get('Content-Type'), 'image/x-icon');
   assert.match(r.headers.get('Cache-Control'), /max-age=604800/);
@@ -399,14 +402,14 @@ test('图标：抓不到存「没有」标记，7 天内不再抓；访客拿不
   await op(db, { op: 'link.add', cat: 1, url: 'https://secret.example/', name: 'S', private: true });
   const f = fakeFetch({ 'https://none.example/favicon.ico': () => new Response('<html>', { headers: { 'Content-Type': 'text/html' } }) });
   const env = (role) => ({ AUTH: auth(role), D1_FINDS: db, D1_DEVICES: db, D1_GAMES: db, R2_PHOTOS: r2 });
-  const get = (id, role = 'owner') => I.onRequestGet({ request: new Request(ORIGIN + '/api/icon?id=' + id), env: env(role), fetchImpl: f });
+  const get = (id, role = 'admin') => I.onRequestGet({ request: new Request(ORIGIN + '/api/icon?id=' + id), env: env(role), fetchImpl: f });
   assert.equal((await get(1)).status, 404);
   assert.equal(f.calls.length, 2);
   assert.equal((await get(1)).status, 404);
   assert.equal(f.calls.length, 2);
   assert.equal((await get(2, 'visitor')).status, 404);
   assert.equal((await get(99)).status, 404);
-  assert.equal((await I.onRequestGet({ request: new Request(ORIGIN + '/api/icon?id=x'), env: env('owner') })).status, 400);
+  assert.equal((await I.onRequestGet({ request: new Request(ORIGIN + '/api/icon?id=x'), env: env('admin') })).status, 400);
 });
 
 test('图标：内网 / 本机 / 自家域名 / SVG / 太大都不要；跳转每一跳都查地址', async () => {
@@ -435,12 +438,12 @@ test('预览：内网、本机、自家域名、怪端口不抓；HTML 取 og �
 
 test('预览接口：访客 403、非同源 403、坏网址 400', async () => {
   assert.equal((await call('/api/preview?url=https://x.com', { role: 'visitor' })).status, 403);
-  assert.equal((await call('/api/preview?url=https://x.com', { role: 'owner', origin: 'https://evil.com' })).status, 403);
-  assert.equal((await call('/api/preview?url=javascript:1', { role: 'owner' })).status, 400);
+  assert.equal((await call('/api/preview?url=https://x.com', { role: 'admin', origin: 'https://evil.com' })).status, 403);
+  assert.equal((await call('/api/preview?url=javascript:1', { role: 'admin' })).status, 400);
   /* 同源 GET 浏览器不带 Origin：认 Sec-Fetch-Site；两样都没有拒绝 */
-  assert.equal((await call('/api/preview?url=javascript:1', { role: 'owner', origin: null, headers: { 'Sec-Fetch-Site': 'same-origin' } })).status, 400);
-  assert.equal((await call('/api/preview?url=https://x.com', { role: 'owner', origin: null })).status, 403);
-  assert.equal((await call('/api/preview?url=https://x.com', { role: 'owner', origin: null, headers: { 'Sec-Fetch-Site': 'same-site' } })).status, 403);
+  assert.equal((await call('/api/preview?url=javascript:1', { role: 'admin', origin: null, headers: { 'Sec-Fetch-Site': 'same-origin' } })).status, 400);
+  assert.equal((await call('/api/preview?url=https://x.com', { role: 'admin', origin: null })).status, 403);
+  assert.equal((await call('/api/preview?url=https://x.com', { role: 'admin', origin: null, headers: { 'Sec-Fetch-Site': 'same-site' } })).status, 403);
 });
 
 /* ================= 迁移 / 配置 ================= */
@@ -477,5 +480,6 @@ test('wrangler.toml：不开 workers.dev，只挂 curio 的 /api/*，D1 + R2 + �
   assert.match(t, /^database_id = "[0-9a-f-]{36}"$/m);
   assert.match(t, /^bucket_name = "styrigx-curio-core"$/m);
   assert.match(t, /^service = "styrigx-auth-gateway"$/m);
+  assert.match(t, /^entrypoint = "AuthVerifier"$/m);
   assert.doesNotMatch(t, /SGX_|\[vars\]/);
 });

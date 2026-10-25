@@ -20,7 +20,7 @@
 ## 这是什么
 
 Styrigx's Space 的子站，从主站的「书签」独立出来（2026-10-21）：自己的仓库、自己的 Pages、自己的 Worker、自己的 D1 和 R2。
-名字取自多宝格（中国人自己的 curio cabinet）：一格放一件。界面和日刻、博客同款沉浸式 app：左边九宫格切站，中间长条是 **发现 / 设备 / 游戏** 三段滑块，右边分享按钮（站长生成带临时会话的短链，访客分享当前页）；
+名字取自多宝格（中国人自己的 curio cabinet）：一格放一件。界面和日刻、博客同款沉浸式 app：左边九宫格切站，中间长条是 **发现 / 设备 / 游戏** 三段滑块，右边分享按钮（管理员生成带临时会话的短链，访客分享当前页）；
 深浅色、调色板、强调色、语言都跟主站设置走（`sgx-ui` cookie，首帧前读，不闪屏）。
 
 ## 能做什么
@@ -30,7 +30,7 @@ Styrigx's Space 的子站，从主站的「书签」独立出来（2026-10-21）
   - **设备**：用过的设备。照片、类型、购买 / 退役日期（使用天数自动算）、系统版本、参数、配件、体验，退役时记下换成了哪台，详情里能顺着换代往前往后看。
   - **游戏**：玩过 / 想玩的游戏。封面、平台、在哪台设备上玩、版本、状态（想玩 / 在玩 / 通关 / 搁置）、评分、评价。
 - **图标**：Worker 去网站抓 apple-touch-icon / favicon，存进 R2，同一个网站共用一份；抓不到显示首字母方块（同一个域名同一个颜色）。
-- **主人**：右下角按钮跟着页签变（「收藏」「设备」「游戏」）；设备和游戏点卡片看详情、左上角编辑。发现里：右下角「收藏」（填网址后「自动填写」抓标题和简介）、长按格子编辑（换分类、上下移、私密、删除）、「⋯」里管理分类。
+- **管理员**：右下角按钮跟着页签变（「收藏」「设备」「游戏」）；设备和游戏点卡片看详情、左上角编辑。发现里：右下角「收藏」（填网址后「自动填写」抓标题和简介）、长按格子编辑（换分类、上下移、私密、删除）、「⋯」里管理分类。
 - **导入浏览器书签**：三星浏览器、Chrome 等导出的 `.html`（Netscape 书签格式）。文件夹 → 分类，已有的网址跳过，**默认仅自己可见**；
   原文件先原样存进 R2（`imports/<时间>-<哈希>.html`）再导入，存不进去就不导入。
 - **导出**：整份收藏导出成浏览器能直接导入的书签文件。
@@ -51,20 +51,20 @@ Styrigx's Space 的子站，从主站的「书签」独立出来（2026-10-21）
 
 ## 接口
 
-全部要有效会话（没有公开接口）；写操作只给主人，且必须同源。
+全部要有效会话（没有公开接口）；写操作只给管理员，且必须同源。
 
 | 接口 | 谁能用 | 做什么 |
 |---|---|---|
-| `GET /api/links` | 有效会话 | 全部分类和收藏；主人含私密，访客只有公开的 |
-| `POST /api/links` | 主人 + 同源 | `{op}`：`cat.add / cat.edit / cat.del / cat.order / link.add / link.edit / link.del / link.order` |
-| `POST /api/import[?private=0]` | 主人 + 同源 | body 是书签文件原文；先备份到 R2 再导入 |
-| `GET /api/export[?lang=en]` | 主人 + 同站 | 下载书签文件 |
-| `GET /api/preview?url=` | 主人 + 同站 | 抓网页标题、简介、图标（只抓公网地址） |
+| `GET /api/links` | 有效会话 | 全部分类和收藏；管理员含私密，访客只有公开的 |
+| `POST /api/links` | 管理员 + 同源 | `{op}`：`cat.add / cat.edit / cat.del / cat.order / link.add / link.edit / link.del / link.order` |
+| `POST /api/import[?private=0]` | 管理员 + 同源 | body 是书签文件原文；先备份到 R2 再导入 |
+| `GET /api/export[?lang=en]` | 管理员 + 同站 | 下载书签文件 |
+| `GET /api/preview?url=` | 管理员 + 同站 | 抓网页标题、简介、图标（只抓公网地址） |
 | `GET /api/icon?id=` | 有效会话 | 收藏的图标（R2 缓存，浏览器缓存一周） |
-| `GET /api/items` | 有效会话 | 全部设备和游戏；主人含私密，访客只有公开的 |
-| `POST /api/items` | 主人 + 同源 | `{op}`：`device.add / device.edit / device.del / device.order / game.add / game.edit / game.del / game.order` |
+| `GET /api/items` | 有效会话 | 全部设备和游戏；管理员含私密，访客只有公开的 |
+| `POST /api/items` | 管理员 + 同源 | `{op}`：`device.add / device.edit / device.del / device.order / game.add / game.edit / game.del / game.order` |
 | `GET /api/photo?kind=device\|game&id=` | 有效会话 | 设备照片 / 游戏封面（访客拿不到私密条目的） |
-| `POST` `DELETE /api/photo?kind=…&id=` | 主人 + 同源 | 传（webp / jpeg / png，≤ 3 MB，浏览器先缩到长边 1600）/ 删照片 |
+| `POST` `DELETE /api/photo?kind=…&id=` | 管理员 + 同源 | 传（webp / jpeg / png，≤ 3 MB，浏览器先缩到长边 1600）/ 删照片 |
 
 数据库迁移在 `workers/core/migrations/`，CI 部署 core 之前自动跑（`d1 migrations apply styrigx-curio-core --remote`）。
 `0002_seed` 是从主站书签迁来的初始收藏（`data/seed.json` → `node scripts/gen-seed-sql.mjs`），只往空库里写，不删不改已有数据。

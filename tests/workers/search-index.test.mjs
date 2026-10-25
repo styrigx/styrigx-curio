@@ -45,13 +45,13 @@ function makeR2() {
   const m = new Map();
   return { m, async put(k, v) { m.set(k, v); }, async get(k) { return m.has(k) ? { body: m.get(k), httpMetadata: {} } : null; }, async delete(k) { m.delete(k); } };
 }
-const auth = (role) => ({ async session() { return role ? { ok: true, role } : { ok: false }; } });
+const auth = (role) => ({ async lockSession() { return role ? { ok: true, role } : { ok: false }; } });
 const ORIGIN = 'https://curio.styrigx.com';
 
 /** 发请求并等完 waitUntil 里的活 */
-async function call(env, p, { role = 'owner', method = 'GET', body } = {}) {
+async function call(env, p, { role = 'admin', method = 'GET', body } = {}) {
   const pending = [];
-  const headers = { Cookie: 'sgx-verified=x', Origin: ORIGIN };
+  const headers = { Cookie: 'sgx-lock-session=x', Origin: ORIGIN };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   const res = await worker.fetch(
     new Request(ORIGIN + p, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) }),
