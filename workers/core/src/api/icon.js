@@ -7,7 +7,7 @@
 // 都抓不到 → 存一个「没有」的标记（7 天内不再抓），回 404，前端显示首字母方块。
 // 响应：200 图片，Cache-Control private, max-age=604800（图标很少变，浏览器缓存一周）。
 import { err, methodNotAllowed } from './_lib.js';
-import { verifySession } from './_auth.js';
+import { sessionRole } from './_auth.js';
 import { idParam } from './_write.js';
 import { previewAllowed } from './_preview.js';
 
@@ -83,7 +83,7 @@ function image(bytes, type) {
 
 export async function onRequestGet(context) {
   const { request, env } = context;
-  const role = await verifySession(request, env);
+  const role = await sessionRole(context);
   if (!role) return err('unauthorized', 401);
   const id = idParam(request);
   if (!id) return err('bad-id', 400);

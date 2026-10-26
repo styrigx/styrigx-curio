@@ -5,7 +5,7 @@
 //                   删条目时它的照片从 R2 一起删（R2 删失败不影响结果，只记日志）。
 //                   400 参数不对；404 不存在（含关联的设备不存在）；409 limit / mismatch
 import { json, err, methodNotAllowed } from './_lib.js';
-import { verifySession } from './_auth.js';
+import { sessionRole } from './_auth.js';
 import { readBody, guardWrite } from './_write.js';
 import { ensureItemSchema, listItems, parseItemOp, applyItemOp, itemDb } from './_items.js';
 
@@ -13,7 +13,7 @@ const STATUS = { 'not-found': 404, mismatch: 409, limit: 409 };
 
 export async function onRequestGet(context) {
   const { request, env } = context;
-  const role = await verifySession(request, env);
+  const role = await sessionRole(context);
   if (!role) return err('unauthorized', 401);
   /* 设备 + 游戏一起读是跨两套数据的一个 batch：用主表 devices 的绑定 D1_DEVICES（见 _items.js listItems） */
   if (!env || !env.D1_DEVICES) return err('server', 503);

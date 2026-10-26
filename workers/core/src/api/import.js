@@ -1,11 +1,12 @@
 // workers/core/src/api/import.js
-// POST /api/import[?private=0]   body：浏览器导出的书签文件原文（.html，最多 8 MB）
+// POST /api/import[?private=0]   body：浏览器导出的书签文件原文（.html，最多 8 MB，按 UTF-8 字节计）
 //
 // 只有管理员；必须同源。步骤：
 //   1. 先把原始文件原样存进 R2：imports/<UTC 时间>-<sha256 前 12 位>.html（存不进去就整个不导入：备份优先，书签不能再丢）
 //   2. 解析（_netscape.js）：文件夹路径 → 分类名；已有同名分类就并进去，没有就新建
 //   3. 网址已经收藏过的跳过（库里按网址去重；同一个文件里重复的也只留一个）
-//   4. 一次性写入（json_each 批量插入，D1 免费版每次请求的查询数有上限，不能一条一条插）
+//   4. 一次性写入（json_each 批量插入，D1 免费版每次请求的查询数有上限，不能一条一条插）：
+//      新分类、收藏、imports 记录放在同一个 db.batch（一个事务）里，中途失败不会留下空分类
 //   5. imports 表记一笔
 // 默认导入成私密（浏览器书签里什么都有）；?private=0 导入成公开。新建的分类也跟着这个设置。
 // 返回 {ok:true, found, added, skipped, invalid, cats_added, backup:<R2 key>, admin:true, cats:[...]}
@@ -39,7 +40,9 @@ export async function onRequestPost(context) {
   const len = Number(request.headers.get('Content-Length') || 0);
   if (len > MAX_IMPORT) return err('too-large', 413);
   const raw = await request.text();
-  if (raw.length > MAX_IMPORT) return err('too-large', 413);
+  /* 按字节计（raw.length 数的是 UTF-16 码元，中文文件实际能到约 3 倍）；没有 Content-Length 的请求也靠这里挡 */
+  const bytes = new TextEncoder().encode(raw).length;
+  if (bytes > MAX_IMPORT) return err('too-large', 413);
   if (!looksLikeBookmarks(raw)) return err('not-bookmarks', 400);
   const parsed = parseBookmarks(raw);
   if (!parsed.items.length) return err('empty', 400);
@@ -78,39 +81,41 @@ export async function onRequestPost(context) {
   const catCount = (cnt.results && cnt.results[0]) || { n: 0, p: -1 };
   if (catCount.n + newCats.length > LIMITS.cats) return err('limit', 409);
 
-  /* 4. 写：先建分类，再读回 id，再批量插收藏 */
-  if (newCats.length) {
-    const rows = newCats.map((n, i) => ({ zh: n, en: n === UNSORTED.zh ? UNSORTED.en : '', p: catCount.p + 1 + i }));
-    await db
-      .prepare("INSERT INTO cats (name_zh, name_en, private, pos, created_at) SELECT json_extract(value, '$.zh'), json_extract(value, '$.en'), ?2, json_extract(value, '$.p'), ?3 FROM json_each(?1)")
-      .bind(JSON.stringify(rows), priv, now)
-      .run();
-    const back = await db.prepare('SELECT id, name_zh FROM cats WHERE created_at = ?1').bind(now).all();
-    for (const r of back.results || []) if (!catId.has(r.name_zh)) catId.set(r.name_zh, r.id);
-  }
-  const posBase = new Map();
+  /* 4. 写（一个 batch = 一个事务）：建新分类 → 插收藏 → 记录。
+     新分类的 id 还不知道：收藏行带分类名 k，INSERT 里按「本次新建（created_at = now）且同名」查出 id；已有分类直接带 id c */
+  const posBase = new Map(); /* 键：已有分类的 id，或新分类的名字 */
   if (fresh.length) {
     const pos = await db.prepare('SELECT cat_id, MAX(pos) AS p FROM links GROUP BY cat_id').all();
     for (const r of pos.results || []) posBase.set(r.cat_id, r.p);
   }
   const rows = fresh.map((it) => {
-    const c = catId.get(nameOf(it));
-    const p = (posBase.has(c) ? posBase.get(c) : -1) + 1;
-    posBase.set(c, p);
-    return { c, u: it.url, n: it.title, p, t: it.added || now };
+    const name = nameOf(it);
+    const c = catId.has(name) ? catId.get(name) : null;
+    const slot = c != null ? c : name;
+    const p = (posBase.has(slot) ? posBase.get(slot) : -1) + 1;
+    posBase.set(slot, p);
+    return c != null ? { c, u: it.url, n: it.title, p, t: it.added || now } : { k: name, u: it.url, n: it.title, p, t: it.added || now };
   });
   const stmts = [];
+  if (newCats.length) {
+    const cr = newCats.map((n, i) => ({ zh: n, en: n === UNSORTED.zh ? UNSORTED.en : '', p: catCount.p + 1 + i }));
+    stmts.push(
+      db
+        .prepare("INSERT INTO cats (name_zh, name_en, private, pos, created_at) SELECT json_extract(value, '$.zh'), json_extract(value, '$.en'), ?2, json_extract(value, '$.p'), ?3 FROM json_each(?1)")
+        .bind(JSON.stringify(cr), priv, now)
+    );
+  }
   for (let i = 0; i < rows.length; i += CHUNK) {
     stmts.push(
       db
-        .prepare("INSERT INTO links (cat_id, url, name_zh, private, pos, created_at, updated_at) SELECT json_extract(value, '$.c'), json_extract(value, '$.u'), json_extract(value, '$.n'), ?2, json_extract(value, '$.p'), json_extract(value, '$.t'), ?3 FROM json_each(?1)")
+        .prepare("INSERT INTO links (cat_id, url, name_zh, private, pos, created_at, updated_at) SELECT COALESCE(json_extract(value, '$.c'), (SELECT id FROM cats WHERE created_at = ?3 AND name_zh = json_extract(value, '$.k') ORDER BY id LIMIT 1)), json_extract(value, '$.u'), json_extract(value, '$.n'), ?2, json_extract(value, '$.p'), json_extract(value, '$.t'), ?3 FROM json_each(?1)")
         .bind(JSON.stringify(rows.slice(i, i + CHUNK)), priv, now)
     );
   }
   /* 5. 记录 */
   stmts.push(
     db.prepare('INSERT INTO imports (r2_key, bytes, found, added, skipped, cats_added, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)')
-      .bind(key, raw.length, parsed.found, rows.length, skipped + parsed.dupes, newCats.length, now)
+      .bind(key, bytes, parsed.found, rows.length, skipped + parsed.dupes, newCats.length, now)
   );
   await db.batch(stmts);
   return json({

@@ -6,7 +6,8 @@
  *
  * 请求顺序：
  *   1. 所有 /api/*：先问网关会话（admin、visitor 都可）；无效 → 401 JSON（不 302，fetch 不跟跳转）。没有公开接口。
- *   2. 按路由表交给 src/api/<路径>.js；写操作自己再要求 admin + 同源
+ *      角色放进 context.data.role，handler 用 sessionRole(context) 直接取，每个请求只问网关一次。
+ *   2. 按路由表交给 src/api/<路径>.js；写操作自己再要求 admin（读 context.data.role）+ 同源
  * /api/lock-session-check 由网关的更精确路由直接回答，到不了这里；万一到了，同样问网关。
  * 不在路由表里的路径 → 404；方法不支持 → 405。
  *
@@ -55,12 +56,12 @@ export function resolve(pathname) {
   return mod ? { mod, params: {}, functionPath: key } : null;
 }
 
-function makeContext(request, env, ctx, params, functionPath) {
+function makeContext(request, env, ctx, params, functionPath, role) {
   return {
     request,
     env,
     params,
-    data: {},
+    data: role ? { role } : {},
     functionPath,
     waitUntil: (p) => { if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(p); },
     passThroughOnException: () => {},
@@ -68,10 +69,18 @@ function makeContext(request, env, ctx, params, functionPath) {
   };
 }
 
-/** 响应打上 X-Curio-Runtime: worker，部署后能从外部确认接口真的走了本 Worker（不含敏感信息） */
+/* 接口直接由本 Worker 回答，不经过网关，网关加的 HSTS 到不了这里：自己补（值同主站网关，1 年、不带 includeSubDomains） */
+const HSTS = 'max-age=31536000';
+
+/**
+ * 响应打上 X-Curio-Runtime: worker，部署后能从外部确认接口真的走了本 Worker（不含敏感信息）；
+ * 统一补 X-Content-Type-Options: nosniff 和 Strict-Transport-Security。
+ */
 function tag(res) {
   const out = new Response(res.body, res);
   out.headers.set('X-Curio-Runtime', 'worker');
+  out.headers.set('X-Content-Type-Options', 'nosniff');
+  out.headers.set('Strict-Transport-Security', HSTS);
   return out;
 }
 
@@ -85,8 +94,9 @@ export async function handle(request, env, ctx) {
     return role ? json(200, { ok: true }) : json(401, { ok: false });
   }
 
+  let role = null;
   if (!isPublic(path)) {
-    const role = await verifySession(request, env);
+    role = await verifySession(request, env);
     if (!role) return json(401, { ok: false, error: 'unauthorized' });
   }
 
@@ -94,7 +104,7 @@ export async function handle(request, env, ctx) {
   if (!hit) return json(404, { ok: false, error: 'not-found' });
   const handler = pickHandler(hit.mod, request.method);
   if (!handler) return json(405, { ok: false, error: 'method' });
-  const res = await handler(makeContext(request, env, ctx, hit.params, hit.functionPath));
+  const res = await handler(makeContext(request, env, ctx, hit.params, hit.functionPath, role));
   if (res && isContentMutation(hit.functionPath, request.method, res.status) && ctx && typeof ctx.waitUntil === 'function') {
     ctx.waitUntil(rebuildSearchIndex(env));
   }
@@ -117,14 +127,15 @@ export default {
   },
 
   /**
-   * Cron（wrangler.toml [triggers]）：每小时兜底重建全站搜索索引；每天一次（UTC 19 点那轮）顺带清扫没人引用的照片（src/photo-sweep.js）。出错只打日志。
+   * Cron（wrangler.toml [triggers]）：每小时兜底重建全站搜索索引（内容没变不写 KV）；每天一次（UTC 19 点那轮）顺带清扫没人引用的照片（src/photo-sweep.js）。出错只打日志。
    * @param {any} controller
    * @param {Record<string, any>} env
    * @param {{ waitUntil(p: Promise<any>): void }} ctx
    */
   async scheduled(controller, env, ctx) {
     const at = controller && controller.scheduledTime ? Number(controller.scheduledTime) : Date.now();
-    const jobs = [rebuildSearchIndex(env)];
+    /* 兜底重建：内容和 KV 里那份一样就不写（省账号共享的 KV 写额度） */
+    const jobs = [rebuildSearchIndex(env, Date.now(), { skipUnchanged: true })];
     if (isSweepHour(at)) jobs.push(sweepPhotos(env, at).catch(() => {}));
     const p = Promise.all(jobs);
     if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(p);

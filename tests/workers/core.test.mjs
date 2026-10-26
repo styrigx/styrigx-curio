@@ -109,6 +109,59 @@ test('没有公开接口：未登录一律 401，带运行标记；不存在 404
   assert.equal((await call('/api/lock-session-check', { role: 'owner' })).status, 401);
 });
 
+test('每个接口请求只问网关一次（index.js 验过的角色经 context.data.role 传给 handler）', async () => {
+  let n = 0;
+  const counting = (role) => ({ async lockSession() { n++; return { ok: true, role }; } });
+  const db = makeD1();
+  const env = (role) => ({ AUTH: counting(role), D1_FINDS: db, D1_DEVICES: db, D1_GAMES: db, R2_PHOTOS: makeR2() });
+  const req = (p, method = 'GET', body) => new Request(ORIGIN + p, {
+    method,
+    headers: { Cookie: 'sgx-lock-session=x', Origin: ORIGIN, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const cases = [
+    ['admin', '/api/links'],
+    ['visitor', '/api/links'],
+    ['admin', '/api/items'],
+    ['admin', '/api/links', 'POST', { op: 'cat.add', name: '一' }],
+    ['visitor', '/api/links', 'POST', { op: 'cat.add', name: '二' }],
+    ['admin', '/api/items', 'POST', { op: 'game.add', title: '空洞骑士', platform: 'PC', status: 'playing' }],
+    ['admin', '/api/export'],
+    ['visitor', '/api/export'],
+    ['admin', '/api/icon?id=999'],
+    ['visitor', '/api/photo?kind=device&id=999'],
+  ];
+  for (const [role, p, method, body] of cases) {
+    n = 0;
+    const res = await worker.fetch(req(p, method, body), env(role), CTX);
+    assert.ok(res.status < 500, p + ' ' + res.status);
+    assert.equal(n, 1, role + ' ' + (method || 'GET') + ' ' + p);
+  }
+  /* 访客写仍是 403、管理员写成功：角色确实传到了 handler */
+  n = 0;
+  assert.equal((await worker.fetch(req('/api/links', 'POST', { op: 'cat.add', name: '三' }), env('visitor'), CTX)).status, 403);
+  assert.equal((await worker.fetch(req('/api/links', 'POST', { op: 'cat.add', name: '三' }), env('admin'), CTX)).status, 200);
+  /* handler 被直接调用（没有 context.data.role）时仍自己问网关 */
+  const A = await import(W + '/src/api/_auth.js');
+  n = 0;
+  assert.equal(await A.sessionRole({ request: req('/api/links'), env: env('admin'), data: {} }), 'admin');
+  assert.equal(n, 1);
+  n = 0;
+  assert.equal(await A.sessionRole({ request: req('/api/links'), env: env('admin'), data: { role: 'visitor' } }), 'visitor');
+  assert.equal(n, 0);
+  /* data.role 只认 admin / visitor，别的值当没有，去问网关 */
+  assert.equal(await A.sessionRole({ request: req('/api/links'), env: env('visitor'), data: { role: 'owner' } }), 'visitor');
+  assert.equal(n, 1);
+});
+
+test('接口响应都带 nosniff 和 HSTS（core 不经过网关，自己补）', async () => {
+  for (const r of [await call('/api/links'), await call('/api/links', { role: 'admin' }), await call('/api/nope', { role: 'admin' }), await call('/api/links', { throws: true })]) {
+    assert.equal(r.headers.get('X-Content-Type-Options'), 'nosniff');
+    assert.equal(r.headers.get('Strict-Transport-Security'), 'max-age=31536000');
+    assert.equal(r.headers.get('X-Curio-Runtime'), 'worker');
+  }
+});
+
 test('写：非同源 403、没 Origin 403、访客 403', async () => {
   const body = { op: 'cat.add', name: 'x' };
   assert.equal((await call('/api/links', { role: 'admin', method: 'POST', body, origin: 'https://evil.com' })).status, 403);
@@ -319,6 +372,29 @@ test('导入：R2 不可用就一条不写；不是书签文件 400；空的 400
   assert.equal((await (await imp(db, makeR2(), '<!DOCTYPE NETSCAPE-Bookmark-file-1><DL><p></DL>')).json()).error, 'empty');
   assert.equal((await imp(db, makeR2(), CHROME, '', 'visitor')).status, 403);
   assert.equal((await call('/api/import', { role: 'admin', db, method: 'POST', body: CHROME, origin: 'https://evil.com' })).status, 403);
+});
+
+test('导入：新分类和收藏在同一个事务里，插收藏失败不留下空分类；大小按 UTF-8 字节算', async () => {
+  const db = makeD1();
+  /* 让插到某个网址时 SQL 报错（模拟 batch 中途失败） */
+  await S.ensureSchema(db);
+  db.raw.exec("CREATE TRIGGER boom BEFORE INSERT ON links WHEN NEW.url = 'https://other.example/' BEGIN SELECT RAISE(ABORT, 'boom'); END");
+  const r = await imp(db, makeR2(), CHROME);
+  assert.equal(r.status, 500);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM cats').get().n, 0);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM links').get().n, 0);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM imports').get().n, 0);
+  db.raw.exec('DROP TRIGGER boom');
+  /* 去掉故障再导：新分类的收藏都挂在对的分类下，imports.bytes 记字节数 */
+  const j = await (await imp(db, makeR2(), CHROME)).json();
+  assert.equal(j.cats_added, 3);
+  assert.equal(j.added, 4);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM links WHERE cat_id IS NULL OR cat_id NOT IN (SELECT id FROM cats)').get().n, 0);
+  assert.equal(db.raw.prepare('SELECT bytes FROM imports').get().bytes, new TextEncoder().encode(CHROME).length);
+  /* 中文：字符数没超 8 MB、字节数超了 → 413 */
+  const zh = '<!DOCTYPE NETSCAPE-Bookmark-file-1><DL><p><DT><A HREF="https://a.example/">' + '书'.repeat(Math.ceil(IMP.MAX_IMPORT / 3) + 10) + '</A></DL>';
+  assert.ok(zh.length < IMP.MAX_IMPORT);
+  assert.equal((await imp(makeD1(), makeR2(), zh)).status, 413);
 });
 
 test('导入：超过 5000 条上限一条不写', async () => {

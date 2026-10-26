@@ -39,7 +39,13 @@ function makeD1(db = new DatabaseSync(':memory:')) {
 }
 function makeKV({ fail = false } = {}) {
   const m = new Map();
-  return { m, puts: 0, async put(k, v) { this.puts++; if (fail) throw new Error('kv down'); m.set(k, v); }, async get(k) { return m.get(k) ?? null; } };
+  const meta = new Map();
+  return {
+    m, meta, puts: 0, reads: 0,
+    async put(k, v, opt = {}) { this.puts++; if (fail) throw new Error('kv down'); m.set(k, v); meta.set(k, opt.metadata ?? null); },
+    async get(k) { return m.get(k) ?? null; },
+    async getWithMetadata(k) { this.reads++; return { value: m.get(k) ?? null, metadata: meta.get(k) ?? null }; },
+  };
 }
 function makeR2() {
   const m = new Map();
@@ -212,6 +218,48 @@ test('出错不抛：KV 写失败、D1 出错、绑定缺失只打日志；写�
   assert.equal(q.out.pending, 1);
   q = await quiet(() => worker.scheduled({}, { D1_FINDS: makeD1(), KV_SEARCH_INDEX: makeKV({ fail: true }) }, { waitUntil() {} }));
   assert.equal(q.out, undefined);
+});
+
+test('Cron 兜底：内容和 KV 里那份一样就不写；内容变了、旧值没有 metadata、读出错都照常写', async () => {
+  const db = makeD1();
+  const env = { D1_FINDS: db, D1_DEVICES: db, D1_GAMES: db, KV_SEARCH_INDEX: makeKV(), R2_PHOTOS: makeR2() };
+  const cron = async () => {
+    const pending = [];
+    await worker.scheduled({ cron: '23 * * * *', scheduledTime: Date.UTC(2026, 9, 26, 1, 23) }, env, { waitUntil: (p) => pending.push(p) });
+    await Promise.all(pending);
+  };
+  /* 第一次：KV 里没有 → 写，metadata 带内容指纹 */
+  await cron();
+  assert.equal(env.KV_SEARCH_INDEX.puts, 1);
+  const sha = env.KV_SEARCH_INDEX.meta.get('site:curio').sha;
+  assert.match(sha, /^[0-9a-f]{64}$/);
+  assert.equal(sha, await SI.contentSha(JSON.parse(env.KV_SEARCH_INDEX.m.get('site:curio'))));
+  /* 内容没变：只读一次，不写（generated 时间不算内容） */
+  await cron();
+  await cron();
+  assert.equal(env.KV_SEARCH_INDEX.puts, 1);
+  assert.equal(env.KV_SEARCH_INDEX.reads, 3);
+  /* 写接口改了内容：照常写（不先读） */
+  const r = await call(env, '/api/items', { method: 'POST', body: { op: 'game.add', title: '空洞骑士', platform: 'PC', status: 'playing' } });
+  assert.equal(r.res.status, 200);
+  assert.equal(env.KV_SEARCH_INDEX.puts, 2);
+  assert.equal(env.KV_SEARCH_INDEX.reads, 3);
+  await cron();
+  assert.equal(env.KV_SEARCH_INDEX.puts, 2);
+  /* 有人直接改了 KV（没 metadata，比如旧版本写的）→ 写回 */
+  env.KV_SEARCH_INDEX.meta.set('site:curio', null);
+  await cron();
+  assert.equal(env.KV_SEARCH_INDEX.puts, 3);
+  /* 读出错 → 照常写 */
+  env.KV_SEARCH_INDEX.getWithMetadata = async () => { throw new Error('kv read down'); };
+  await cron();
+  assert.equal(env.KV_SEARCH_INDEX.puts, 4);
+  /* 不带 skipUnchanged（写接口那条路）：不读、照写 */
+  const kv = makeKV();
+  await SI.rebuildSearchIndex({ D1_FINDS: db, KV_SEARCH_INDEX: kv });
+  await SI.rebuildSearchIndex({ D1_FINDS: db, KV_SEARCH_INDEX: kv });
+  assert.equal(kv.puts, 2);
+  assert.equal(kv.reads, 0);
 });
 
 test('wrangler.toml：KV_SEARCH_INDEX 绑 styrigx-search-index、每小时 Cron', () => {

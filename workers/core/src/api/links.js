@@ -5,7 +5,7 @@
 //                   成功 → {ok:true, admin:true, cats:[...]}（直接带回最新的全部收藏，前端整页重画）
 //                   400 参数不对；404 不存在；409 not-empty / mismatch / limit / duplicate
 import { json, err, methodNotAllowed } from './_lib.js';
-import { verifySession } from './_auth.js';
+import { sessionRole } from './_auth.js';
 import { readBody, guardWrite } from './_write.js';
 import { ensureSchema, listAll, parseOp, applyOp } from './_store.js';
 
@@ -17,7 +17,7 @@ function db(env) {
 
 export async function onRequestGet(context) {
   const { request, env } = context;
-  const role = await verifySession(request, env);
+  const role = await sessionRole(context);
   if (!role) return err('unauthorized', 401);
   const d = db(env);
   if (!d) return err('server', 503);
