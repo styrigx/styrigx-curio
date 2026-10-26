@@ -1,6 +1,6 @@
 {{ define "main" }}
 {{ $isEn := or (eq .Lang "en") (hasPrefix .RelPermalink "/en/") }}
-<main class="cu-wrap cu-narrow pb-16">
+<main class="cu-wrap cu-narrow pb-16!">
   <section class="text-center py-16">
     <p class="text-6xl font-extrabold text-m-on-surface-variant/40 mb-4">404</p>
     <h1 class="text-xl font-bold text-m-on-surface mb-2">{{ if $isEn }}Page not found{{ else }}页面不存在{{ end }}</h1>

@@ -41,7 +41,7 @@ Styrigx's Space 的子站，从主站的「书签」独立出来（2026-10-21）
 
 | 部分 | 用什么 |
 |---|---|
-| 页面 | Hugo + Tailwind，Cloudflare Pages 只放静态文件 |
+| 页面 | Hugo + Tailwind 4（CSS-first 配置写在 `web/assets/css/input.css`，`npm run build:css` 用 `@tailwindcss/cli`），Cloudflare Pages 只放静态文件 |
 | 接口 | Worker `styrigx-curio-core`（`workers/core/`），路由 `curio.styrigx.com/api/*` |
 | 数据 | Cloudflare D1 `styrigx-curio-core`（分类、收藏、导入记录、设备、游戏） |
 | 文件 | Cloudflare R2 `styrigx-curio-core`（`icons/` 图标缓存、`imports/` 导入原文备份、`photos/` 设备照片和游戏封面） |
