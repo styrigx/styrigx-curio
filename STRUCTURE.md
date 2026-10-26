@@ -27,7 +27,7 @@ styrigx-curio/
 | `assets/js/curio-items.js` | 「设备」「游戏」页签（列表、详情、编辑、照片缩图上传）；纯函数同上 |
 | `assets/js/curio-tabs.js` | 三个页签的切换（hash、滑块、左右滑、右下角按钮） |
 | `assets/js/topbar.js` | 导航抽屉开关 |
-| `assets/js/sgx/` | 外观和语言继承主站（`sgx-ui` cookie）；`shell/palette-scheme.js` 是主站共享外壳的自定义主题色引擎 |
+| `assets/js/sgx/` | 外观和语言继承主站（`sgx-ui` cookie）；`shell/ui-cookie-read.js` 是主站共享外壳的 cookie 读端（baseof 内联），`shell/palette-scheme.js` 是自定义主题色引擎 |
 | `assets/sgx-shell/` | 主站共享外壳的抽屉项 + 图标、预设种子，`scripts/sync-shell.mjs` 同步，勿手改 |
 | `assets/css/input.css` | 样式；`@sgx-shell:begin … end` 之间是主站共享外壳（勿手改），本站自己的在文件末尾（`cu-` 前缀；`bk-` 是沿用的共用弹层组件） |
 | `assets/js/sgx-lock-sync.js` | 切回前台复查会话，401 → 刷新去主站锁屏 |
