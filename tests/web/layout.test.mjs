@@ -87,3 +87,19 @@ test('不被收录、外观和语言跟主站（ui-inherit-run 在样式前）',
   assert.ok(base.indexOf('ui-inherit-run.js') < base.indexOf('css/main.css'));
   assert.doesNotMatch(base + index, /daymark|日刻分区|dm-/);
 });
+
+test('robots.txt 用 static 里的 Disallow: /（Hugo 内置 robots 模板关掉，否则会盖成全部允许）', () => {
+  assert.match(read('web/hugo.yaml'), /^enableRobotsTXT: false$/m);
+  assert.match(read('web/static/robots.txt'), /^User-agent: \*\nDisallow: \/$/m);
+});
+
+test('head 内联脚本和自定义色引擎不打包整份 palettes.json，只经 js.Build params 拿 {v, seeds}', () => {
+  for (const f of ['web/assets/js/sgx/ui-inherit-run.js', 'web/assets/js/sgx/shell-accent.js']) {
+    const src = read(f);
+    assert.doesNotMatch(src, /^import .*palettes\.json/m, f);
+    assert.match(src, /^import \* as params from '@params';$/m, f);
+  }
+  assert.match(base, /resources\.Get "sgx-shell\/palettes\.json" \| transform\.Unmarshal/);
+  assert.match(base, /\$shellParams := dict "v" \$pal\.schemeVersion "seeds" \$seeds/);
+  assert.match(base, /js\/sgx\/ui-inherit-run\.js" \| js\.Build \(dict [^)]*"params" \$shellParams\)/);
+});

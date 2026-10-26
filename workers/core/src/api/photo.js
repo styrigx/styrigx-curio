@@ -7,7 +7,7 @@
 // 前端上传前在浏览器里缩到长边 1600、转 webp，所以一般只有几百 KB。
 // 响应头：Cache-Control private, max-age=31536000, immutable（key 带时间，换照片 = 换地址，前端用 ?v= 区分）。
 import { err, json, methodNotAllowed } from './_lib.js';
-import { verifySession } from './_auth.js';
+import { sessionRole } from './_auth.js';
 import { guardWrite, idParam } from './_write.js';
 import { ensureItemSchema, KINDS, itemDb } from './_items.js';
 
@@ -33,7 +33,7 @@ function target(request) {
 
 export async function onRequestGet(context) {
   const { request, env } = context;
-  const role = await verifySession(request, env);
+  const role = await sessionRole(context);
   if (!role) return err('unauthorized', 401);
   const t = target(request);
   if (!t) return err('bad-id', 400);
