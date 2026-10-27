@@ -86,7 +86,7 @@
       <label class="flex items-center gap-3 cursor-pointer">
         <span class="flex-1 text-[15px]">{{ if $isEn }}Retired{{ else }}已退役{{ end }}</span>
         <input id="dv-retired" type="checkbox" class="peer sr-only">
-        <span class="shrink-0 w-12 h-7 rounded-full bg-[var(--sgx-switch-track-off)] peer-checked:bg-[var(--sgx-switch-track-on)] relative transition-colors after:content-[''] after:absolute after:top-1 after:left-1 after:w-5 after:h-5 after:rounded-full after:bg-[var(--sgx-switch-thumb-off)] peer-checked:after:bg-[var(--sgx-switch-thumb-on)] after:shadow after:transition-transform peer-checked:after:translate-x-5"></span>
+        <span class="shrink-0 w-12 h-7 rounded-full bg-[var(--sgx-switch-track-off)] peer-checked:bg-[var(--sgx-switch-track-on)] relative transition-colors after:content-[''] after:absolute after:top-1 after:left-1 after:w-5 after:h-5 after:rounded-full after:bg-[var(--sgx-switch-thumb-off)] peer-checked:after:bg-[var(--sgx-switch-thumb-on)] after:shadow-sm after:transition-transform peer-checked:after:translate-x-5"></span>
       </label>
       <div id="dv-retire-wrap" class="it-two hidden">
         <label class="cu-field"><span>{{ if $isEn }}Retired on{{ else }}退役日期{{ end }}</span><input id="dv-retired-at" type="date"></label>
@@ -95,7 +95,7 @@
       <label class="flex items-center gap-3 cursor-pointer">
         <span class="flex-1 text-[15px]">{{ if $isEn }}Only me{{ else }}仅自己可见{{ end }}</span>
         <input id="dv-private" type="checkbox" class="peer sr-only">
-        <span class="shrink-0 w-12 h-7 rounded-full bg-[var(--sgx-switch-track-off)] peer-checked:bg-[var(--sgx-switch-track-on)] relative transition-colors after:content-[''] after:absolute after:top-1 after:left-1 after:w-5 after:h-5 after:rounded-full after:bg-[var(--sgx-switch-thumb-off)] peer-checked:after:bg-[var(--sgx-switch-thumb-on)] after:shadow after:transition-transform peer-checked:after:translate-x-5"></span>
+        <span class="shrink-0 w-12 h-7 rounded-full bg-[var(--sgx-switch-track-off)] peer-checked:bg-[var(--sgx-switch-track-on)] relative transition-colors after:content-[''] after:absolute after:top-1 after:left-1 after:w-5 after:h-5 after:rounded-full after:bg-[var(--sgx-switch-thumb-off)] peer-checked:after:bg-[var(--sgx-switch-thumb-on)] after:shadow-sm after:transition-transform peer-checked:after:translate-x-5"></span>
       </label>
       <p id="dv-err" class="hidden text-sm text-m-error"></p>
     </form>
@@ -136,7 +136,7 @@
       <label class="flex items-center gap-3 cursor-pointer">
         <span class="flex-1 text-[15px]">{{ if $isEn }}Only me{{ else }}仅自己可见{{ end }}</span>
         <input id="gm-private" type="checkbox" class="peer sr-only">
-        <span class="shrink-0 w-12 h-7 rounded-full bg-[var(--sgx-switch-track-off)] peer-checked:bg-[var(--sgx-switch-track-on)] relative transition-colors after:content-[''] after:absolute after:top-1 after:left-1 after:w-5 after:h-5 after:rounded-full after:bg-[var(--sgx-switch-thumb-off)] peer-checked:after:bg-[var(--sgx-switch-thumb-on)] after:shadow after:transition-transform peer-checked:after:translate-x-5"></span>
+        <span class="shrink-0 w-12 h-7 rounded-full bg-[var(--sgx-switch-track-off)] peer-checked:bg-[var(--sgx-switch-track-on)] relative transition-colors after:content-[''] after:absolute after:top-1 after:left-1 after:w-5 after:h-5 after:rounded-full after:bg-[var(--sgx-switch-thumb-off)] peer-checked:after:bg-[var(--sgx-switch-thumb-on)] after:shadow-sm after:transition-transform peer-checked:after:translate-x-5"></span>
       </label>
       <p id="gm-err" class="hidden text-sm text-m-error"></p>
     </form>
@@ -204,7 +204,7 @@
       <label class="flex items-center gap-3 cursor-pointer">
         <span class="flex-1 text-[15px]">{{ if $isEn }}Only me{{ else }}仅自己可见{{ end }}</span>
         <input id="f-private" type="checkbox" class="peer sr-only">
-        <span class="shrink-0 w-12 h-7 rounded-full bg-[var(--sgx-switch-track-off)] peer-checked:bg-[var(--sgx-switch-track-on)] relative transition-colors after:content-[''] after:absolute after:top-1 after:left-1 after:w-5 after:h-5 after:rounded-full after:bg-[var(--sgx-switch-thumb-off)] peer-checked:after:bg-[var(--sgx-switch-thumb-on)] after:shadow after:transition-transform peer-checked:after:translate-x-5"></span>
+        <span class="shrink-0 w-12 h-7 rounded-full bg-[var(--sgx-switch-track-off)] peer-checked:bg-[var(--sgx-switch-track-on)] relative transition-colors after:content-[''] after:absolute after:top-1 after:left-1 after:w-5 after:h-5 after:rounded-full after:bg-[var(--sgx-switch-thumb-off)] peer-checked:after:bg-[var(--sgx-switch-thumb-on)] after:shadow-sm after:transition-transform peer-checked:after:translate-x-5"></span>
       </label>
       <div id="f-move" class="cu-move hidden">
         <span>{{ if $isEn }}Position{{ else }}位置{{ end }}</span>
@@ -260,7 +260,7 @@
       <label class="flex items-center gap-3 cursor-pointer">
         <span class="flex-1 text-[15px]">{{ if $isEn }}Import as only me{{ else }}导入为仅自己可见{{ end }}</span>
         <input id="imp-private" type="checkbox" class="peer sr-only" checked>
-        <span class="shrink-0 w-12 h-7 rounded-full bg-[var(--sgx-switch-track-off)] peer-checked:bg-[var(--sgx-switch-track-on)] relative transition-colors after:content-[''] after:absolute after:top-1 after:left-1 after:w-5 after:h-5 after:rounded-full after:bg-[var(--sgx-switch-thumb-off)] peer-checked:after:bg-[var(--sgx-switch-thumb-on)] after:shadow after:transition-transform peer-checked:after:translate-x-5"></span>
+        <span class="shrink-0 w-12 h-7 rounded-full bg-[var(--sgx-switch-track-off)] peer-checked:bg-[var(--sgx-switch-track-on)] relative transition-colors after:content-[''] after:absolute after:top-1 after:left-1 after:w-5 after:h-5 after:rounded-full after:bg-[var(--sgx-switch-thumb-off)] peer-checked:after:bg-[var(--sgx-switch-thumb-on)] after:shadow-sm after:transition-transform peer-checked:after:translate-x-5"></span>
       </label>
       <p id="imp-msg" class="hidden text-sm"></p>
       <button id="imp-go" type="button" class="h-12 rounded-full bg-m-primary-fill text-m-on-primary-fill text-[15px] font-bold disabled:opacity-50" disabled>{{ if $isEn }}Import{{ else }}导入{{ end }}</button>
