@@ -5,14 +5,15 @@
 //                                             换照片：先写新的、再改 D1、最后删旧的。→ {ok:true}
 //   DELETE /api/photo?kind=…&id=N             admin + 同源；删照片并清空 D1 里的 key。→ {ok:true}
 // 前端上传前在浏览器里缩到长边 1600、转 webp，所以一般只有几百 KB。
-// 响应头：Cache-Control private, max-age=31536000, immutable（key 带时间，换照片 = 换地址，前端用 ?v= 区分）。
+// 响应头：Cache-Control private, no-cache + ETag + Vary: Cookie（_image.js）：浏览器每次用前都回来验会话，内容没变回 304。
+//   ETag 由 R2 key 算（key 带时间，换照片 = 换 key = 换 ETag），304 不用读 R2。前端 ?v= 照旧用来换地址。
 import { err, json, methodNotAllowed } from './_lib.js';
 import { sessionRole } from './_auth.js';
 import { guardWrite, idParam } from './_write.js';
 import { ensureItemSchema, KINDS, itemDb } from './_items.js';
+import { etagMatches, etagOf, imageResponse, notModified } from './_image.js';
 
 export const PHOTO_MAX_BYTES = 3 * 1024 * 1024;
-const CACHE = 'private, max-age=31536000, immutable';
 
 /** 看头几个字节认图片类型：webp / jpeg / png，其它返回 '' */
 export function sniffImage(b) {
@@ -42,10 +43,13 @@ export async function onRequestGet(context) {
   await ensureItemSchema(db);
   const row = await db.prepare(`SELECT ${t.K.photo} AS photo, private FROM ${t.K.table} WHERE id = ?1`).bind(t.id).first();
   if (!row || !row.photo || (role !== 'admin' && row.private)) return err('not-found', 404);
+  /* 会话（index.js）和可见性（上一行）都过了才看缓存 */
+  const etag = await etagOf(row.photo);
+  if (etagMatches(request, etag)) return notModified(etag);
   const obj = await env.R2_PHOTOS.get(row.photo);
   if (!obj) return err('not-found', 404);
   const type = (obj.httpMetadata && obj.httpMetadata.contentType) || 'image/webp';
-  return new Response(obj.body, { status: 200, headers: { 'Content-Type': type, 'Cache-Control': CACHE, 'X-Content-Type-Options': 'nosniff' } });
+  return imageResponse(obj.body, type, etag);
 }
 
 export async function onRequestPost(context) {

@@ -62,10 +62,10 @@ Styrigx's Space 的子站，从主站的「书签」独立出来（2026-10-21）
 | `POST /api/import[?private=0]` | 管理员 + 同源 | body 是书签文件原文；先备份到 R2 再导入 |
 | `GET /api/export[?lang=en]` | 管理员 + 同站 | 下载书签文件 |
 | `GET /api/preview?url=` | 管理员 + 同站 | 抓网页标题、简介、图标（只抓公网地址） |
-| `GET /api/icon?id=` | 有效会话 | 收藏的图标（R2 缓存，浏览器缓存一周） |
+| `GET /api/icon?id=` | 有效会话 | 收藏的图标（R2 缓存；浏览器每次用前回来验会话，没变回 304） |
 | `GET /api/items` | 有效会话 | 全部设备和游戏；管理员含私密，访客只有公开的 |
 | `POST /api/items` | 管理员 + 同源 | `{op}`：`device.add / device.edit / device.del / device.order / game.add / game.edit / game.del / game.order` |
-| `GET /api/photo?kind=device\|game&id=` | 有效会话 | 设备照片 / 游戏封面（访客拿不到私密条目的） |
+| `GET /api/photo?kind=device\|game&id=` | 有效会话 | 设备照片 / 游戏封面（访客拿不到私密条目的；缓存同图标） |
 | `POST` `DELETE /api/photo?kind=…&id=` | 管理员 + 同源 | 传（webp / jpeg / png，≤ 3 MB，浏览器先缩到长边 1600）/ 删照片 |
 
 数据库迁移在 `workers/core/migrations/`，CI 部署 core 之前自动跑（`d1 migrations apply styrigx-curio-core --remote`）。
