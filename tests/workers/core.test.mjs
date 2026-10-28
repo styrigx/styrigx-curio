@@ -52,19 +52,22 @@ function makeD1(db = new DatabaseSync(':memory:')) {
     },
   };
 }
-/** 内存版 R2 */
+/** 内存版 R2（httpEtag 同真 R2：带引号，每次写换一个） */
 function makeR2(fail = false) {
   const m = new Map();
+  let n = 0;
   return {
     m,
     async put(key, value, opt = {}) {
       if (fail) throw new Error('r2 down');
       const bytes = typeof value === 'string' ? new TextEncoder().encode(value) : new Uint8Array(value);
-      m.set(key, { bytes, httpMetadata: opt.httpMetadata || {}, customMetadata: opt.customMetadata || {} });
+      const o = { bytes, httpMetadata: opt.httpMetadata || {}, customMetadata: opt.customMetadata || {}, httpEtag: '"r2-' + (++n) + '"' };
+      m.set(key, o);
+      return { key, httpEtag: o.httpEtag };
     },
     async get(key) {
       const o = m.get(key);
-      return o ? { body: o.bytes, httpMetadata: o.httpMetadata, customMetadata: o.customMetadata } : null;
+      return o ? { body: o.bytes, httpMetadata: o.httpMetadata, customMetadata: o.customMetadata, httpEtag: o.httpEtag } : null;
     },
   };
 }
@@ -460,7 +463,9 @@ test('图标：没缓存现抓（apple-touch-icon → favicon.ico），存 R2 �
   const r = await I.onRequestGet({ request: req(1), env: env('admin'), fetchImpl: f, ...ctxFetch });
   assert.equal(r.status, 200);
   assert.equal(r.headers.get('Content-Type'), 'image/x-icon');
-  assert.match(r.headers.get('Cache-Control'), /max-age=604800/);
+  assert.equal(r.headers.get('Cache-Control'), 'private, no-cache');
+  assert.equal(r.headers.get('Vary'), 'Cookie');
+  assert.match(r.headers.get('ETag') || '', /^"r2-\d+"$/);
   assert.deepEqual(new Uint8Array(await r.arrayBuffer()), PNG);
   assert.deepEqual(f.calls, ['https://site.example/apple-touch-icon.png', 'https://site.example/favicon.ico']);
   assert.ok(r2.m.has('icons/h/site.example'));
@@ -486,6 +491,39 @@ test('图标：抓不到存「没有」标记，7 天内不再抓；访客拿不
   assert.equal((await get(2, 'visitor')).status, 404);
   assert.equal((await get(99)).status, 404);
   assert.equal((await I.onRequestGet({ request: new Request(ORIGIN + '/api/icon?id=x'), env: env('admin') })).status, 400);
+});
+
+test('图标：图片一律要过会话——private, no-cache + ETag，304 只在会话和可见性都过了才给', async () => {
+  const db = makeD1();
+  const r2 = makeR2();
+  await op(db, { op: 'cat.add', name: 'x' });
+  await op(db, { op: 'link.add', cat: 1, url: 'https://pub.example/', name: 'P' });
+  await op(db, { op: 'cat.add', name: '私密', private: true });
+  await op(db, { op: 'link.add', cat: 2, url: 'https://pub.example/2', name: 'Q' });
+  const f = fakeFetch({ 'https://pub.example/apple-touch-icon.png': () => new Response(PNG, { headers: { 'Content-Type': 'image/png' } }) });
+  const get = (id, role, inm) => call('/api/icon?id=' + id, { role, headers: inm ? { 'If-None-Match': inm } : {}, db, r2 });
+  /* 先由 handler 抓进 R2（call() 走 index.js 没法注入 fetchImpl） */
+  const env = { AUTH: auth('admin'), D1_FINDS: db, D1_DEVICES: db, D1_GAMES: db, R2_PHOTOS: r2 };
+  const first = await I.onRequestGet({ request: new Request(ORIGIN + '/api/icon?id=1'), env, fetchImpl: f });
+  const etag = first.headers.get('ETag');
+  assert.ok(etag);
+  /* 有会话 + 带对的 If-None-Match → 304，不带正文，头一样 */
+  const nm = await get(1, 'visitor', etag);
+  assert.equal(nm.status, 304);
+  assert.equal(nm.headers.get('ETag'), etag);
+  assert.equal(nm.headers.get('Cache-Control'), 'private, no-cache');
+  assert.equal(nm.headers.get('Vary'), 'Cookie');
+  assert.equal((await nm.arrayBuffer()).byteLength, 0);
+  assert.equal((await get(1, 'admin', 'W/' + etag + ', "zzz"')).status, 304, '弱比较、多个值');
+  assert.equal((await get(1, 'admin', '"other"')).status, 200, 'ETag 不对回整张图');
+  /* 没会话：带对的 ETag 也只有 401，不给 304、不给图 */
+  const no = await get(1, null, etag);
+  assert.equal(no.status, 401);
+  assert.equal(no.headers.get('Cache-Control'), 'private, no-store');
+  assert.equal(no.headers.get('ETag'), null);
+  /* 私密分类下的收藏和公开的同域名共用一份图标缓存：访客带着同一个 ETag 也是 404 */
+  assert.equal((await get(2, 'visitor', etag)).status, 404);
+  assert.equal((await get(2, 'admin', etag)).status, 304);
 });
 
 test('图标：内网 / 本机 / 自家域名 / SVG / 太大都不要；跳转每一跳都查地址', async () => {

@@ -31,7 +31,7 @@ styrigx-curio/
 | `assets/sgx-shell/` | 主站共享外壳的抽屉项 + 图标、预设种子，`scripts/sync-shell.mjs` 同步，勿手改 |
 | `assets/css/input.css` | 样式；`@sgx-shell:begin … end` 之间是主站共享外壳（勿手改），本站自己的在文件末尾（`cu-` 前缀；`bk-` 是沿用的共用弹层组件） |
 | `assets/js/sgx-lock-sync.js` | 切回前台复查会话，401 → 刷新去主站锁屏 |
-| `static/_worker.js` | 只把 `*.pages.dev` 跳回 `curio.styrigx.com`（不经网关的地址不能直接开页面） |
+| `static/_worker.js` | 把 `*.pages.dev` 跳回 `curio.styrigx.com`（不经网关的地址不能直接开页面）；像图片的回答一律 404（图片一律要过会话，Pages 不验会话，图片只走 core 的 `/api/photo` `/api/icon`；只放行 `/favicon.ico` 跳主站头像的 302） |
 
 ## workers/core/
 
@@ -53,6 +53,7 @@ styrigx-curio/
 | `src/api/_netscape.js` | 书签文件的解析和生成 |
 | `src/api/_preview.js` | 抓网页 + 地址安全检查（不抓内网 / 本机 / 自家域名） |
 | `src/api/_auth.js` `_lib.js` `_write.js` | 问网关、JSON 响应、同源 / 同站检查、读 body |
+| `src/api/_image.js` | 图片响应共用：`private, no-cache` + ETag + `Vary: Cookie`，浏览器每次用前回来验会话，304 排在会话和可见性检查之后 |
 | `migrations/` | D1 迁移：`0001_init`（cats、links、imports）、`0002_seed`（初始收藏，由 `scripts/gen-seed-sql.mjs` 生成）、`0003_devices_games`（devices、games） |
 
 ## 部署顺序（CI）

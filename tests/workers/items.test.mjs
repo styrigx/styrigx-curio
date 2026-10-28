@@ -4,6 +4,7 @@
 // - 读：访客看不到私密条目；指向私密设备的 replaced_by / device_id 对访客置 0
 // - 增改删排序；删设备时别人指向它的都清零；删条目连 R2 照片一起删
 // - 照片：只收 webp / jpeg / png（看字节）、≤ 3 MB；换照片删旧的；访客拿不到私密条目的照片；DELETE 清空
+// - 照片一律要过会话：private, no-cache + ETag，304 只在会话和可见性都过了才给；换照片换 ETag
 // - 迁移 0003 和 ITEM_SCHEMA 建出来的表一致
 // SQL 用 node:sqlite 真跑（CI 用 Node 22）。运行：node --test tests/workers/items.test.mjs
 import { test } from 'node:test';
@@ -49,8 +50,9 @@ function makeR2() {
 }
 const auth = (role) => ({ async lockSession() { return role ? { ok: true, role } : { ok: false }; } });
 const ORIGIN = 'https://curio.styrigx.com';
-function call(p, { role = null, db, r2, method = 'GET', body, origin = ORIGIN, type } = {}) {
+function call(p, { role = null, db, r2, method = 'GET', body, origin = ORIGIN, type, inm } = {}) {
   const headers = { Cookie: 'sgx-lock-session=x' };
+  if (inm) headers['If-None-Match'] = inm;
   if (origin) headers.Origin = origin;
   if (body !== undefined) headers['Content-Type'] = type || 'application/json';
   const b = body === undefined ? undefined : body instanceof Uint8Array || typeof body === 'string' ? body : JSON.stringify(body);
@@ -169,6 +171,47 @@ test('照片：只收 webp/jpeg/png、≤ 3 MB；换照片删旧的；访客拿�
   const gid = (await (await post(e, { op: 'game.add', title: 'Hades' })).json()).id;
   assert.equal((await call('/api/photo?kind=game&id=' + gid, { ...e, role: 'admin', method: 'POST', body: WEBP, type: 'image/webp' })).status, 200);
   assert.equal((await get(e, 'admin')).games[0].cover, true);
+});
+
+test('照片：图片一律要过会话——private, no-cache + ETag；304 排在会话和可见性之后；换照片换 ETag', async () => {
+  const e = env();
+  const id = (await (await post(e, { op: 'device.add', name: 'S24' })).json()).id;
+  const pid = (await (await post(e, { op: 'device.add', name: '私', private: true })).json()).id;
+  const up = (i, body) => call('/api/photo?kind=device&id=' + i, { ...e, role: 'admin', method: 'POST', body, type: 'image/webp' });
+  assert.equal((await up(id, WEBP)).status, 200);
+  assert.equal((await up(pid, WEBP)).status, 200);
+  const g = await call('/api/photo?kind=device&id=' + id, { ...e, role: 'visitor' });
+  assert.equal(g.status, 200);
+  assert.equal(g.headers.get('Cache-Control'), 'private, no-cache');
+  assert.equal(g.headers.get('Vary'), 'Cookie');
+  assert.equal(g.headers.get('X-Content-Type-Options'), 'nosniff');
+  const etag = g.headers.get('ETag');
+  assert.match(etag || '', /^"[0-9a-f]{32}"$/);
+  assert.doesNotMatch(etag, /photos|device/, 'ETag 不露 R2 key');
+  /* 304 不读 R2 */
+  let reads = 0;
+  const realGet = e.r2.get;
+  e.r2.get = async (k) => { reads++; return realGet(k); };
+  const nm = await call('/api/photo?kind=device&id=' + id, { ...e, role: 'visitor', inm: etag });
+  assert.equal(nm.status, 304);
+  assert.equal(nm.headers.get('ETag'), etag);
+  assert.equal(nm.headers.get('Cache-Control'), 'private, no-cache');
+  assert.equal(reads, 0);
+  e.r2.get = realGet;
+  /* 没会话：同一个 ETag 只有 401 */
+  const no = await call('/api/photo?kind=device&id=' + id, { ...e, inm: etag });
+  assert.equal(no.status, 401);
+  assert.equal(no.headers.get('Cache-Control'), 'private, no-store');
+  /* 私密条目：访客带上管理员拿到的 ETag 也是 404 */
+  const pe = (await call('/api/photo?kind=device&id=' + pid, { ...e, role: 'admin' })).headers.get('ETag');
+  assert.equal((await call('/api/photo?kind=device&id=' + pid, { ...e, role: 'visitor', inm: pe })).status, 404);
+  assert.equal((await call('/api/photo?kind=device&id=' + pid, { ...e, role: 'admin', inm: pe })).status, 304);
+  /* 换照片 → 旧 ETag 不再命中 */
+  await new Promise((r) => setTimeout(r, 2));
+  assert.equal((await up(id, WEBP)).status, 200);
+  const after = await call('/api/photo?kind=device&id=' + id, { ...e, role: 'visitor', inm: etag });
+  assert.equal(after.status, 200);
+  assert.notEqual(after.headers.get('ETag'), etag);
 });
 
 test('迁移 0003 连跑两次不报错，和 ITEM_SCHEMA 建出来的表一样', () => {
