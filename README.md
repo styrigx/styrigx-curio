@@ -10,6 +10,8 @@
 
 ![Hugo](https://img.shields.io/badge/dynamic/yaml?url=https://raw.githubusercontent.com/styrigx/styrigx-space/main/.github/actions/setup-hugo/action.yml&query=%24..HUGO_VERSION&label=Hugo&style=flat-square&color=2563eb&logo=hugo)
 ![Version](https://img.shields.io/badge/dynamic/yaml?url=https://raw.githubusercontent.com/styrigx/styrigx-curio/main/web/hugo.yaml&query=%24.params.version&label=Curio&style=flat-square&color=2563eb)
+![Tailwind CSS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/styrigx/styrigx-curio/main/package-lock.json&query=%24.packages%5B%27node_modules%2Ftailwindcss%27%5D.version&label=Tailwind%20CSS&style=flat-square&color=2563eb&logo=tailwindcss)
+![Styrigx UI](https://img.shields.io/badge/dynamic/yaml?url=https://raw.githubusercontent.com/styrigx/styrigx-space/main/web/data/version.yaml&query=%24.ui&label=Styrigx%20UI&style=flat-square&color=2563eb)
 ![Deploy](https://img.shields.io/github/actions/workflow/status/styrigx/styrigx-curio/deploy.yml?style=flat-square&label=Deploy&color=2563eb)
 ![License](https://img.shields.io/badge/License-MIT-2563eb?style=flat-square)
 
@@ -19,8 +21,8 @@
 
 ## 这是什么
 
-Styrigx's Space 的子站，从主站的「书签」独立出来（2026-10-21）：自己的仓库、自己的 Pages、自己的 Worker、自己的 D1 和 R2。
-名字取自多宝格（中国人自己的 curio cabinet）：一格放一件。界面和日刻、博客同款沉浸式 app：左边九宫格切站，中间长条是 **发现 / 设备 / 游戏** 三段滑块，右边分享按钮（管理员生成带临时会话的短链，访客分享当前页）；
+Styrigx's Space 的子站，从主站的「书签」独立出来（2026-10-21）：自己的仓库、自己的 Pages、自己的 Worker（`styrigx-curio-core`）、自己的 D1 和 R2。
+名字取自多宝格（中国人自己的 curio cabinet）：一格放一件，网上偶然遇到、想留下的好东西都收在这里。界面是和日刻、博客同款的 Styrigx UI 沉浸式 app：左边九宫格切站，中间长条是 **发现 / 设备 / 游戏** 三段滑块，右边分享按钮（管理员生成带临时会话的短链，访客分享当前页）；
 深浅色、调色板、强调色、语言都跟主站设置走（`sgx-ui` cookie，首帧前读，不闪屏）。
 
 ## 能做什么
